@@ -1,0 +1,1682 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CloudGate CASB – Cloud Access Security Broker prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<style>
+:root{
+  --bg:#EDF0F5;--panel:#FFFFFF;--panel2:#F5F7FA;--line:#DCE1EA;--line2:#C7CEDC;
+  --text:#17203B;--muted:#56607E;--faint:#848DA8;
+  --brand:#3B3DBF;--brand-ink:#FFFFFF;--brand-soft:#E8E8FA;
+  --crit:#C2203A;--crit-soft:#FBE4E8;--high:#C9601A;--high-soft:#FCEADC;
+  --med:#9A7300;--med-soft:#FAF0CC;--low:#1F7F5A;--low-soft:#DBF1E6;
+  --hover:#F0F2F8;--shadow:0 1px 2px rgba(23,32,59,.06),0 6px 20px rgba(23,32,59,.05);
+  --scrim:rgba(15,20,40,.38);
+  color-scheme:light;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1322;--panel:#151B2E;--panel2:#1A2137;--line:#252E48;--line2:#33405F;
+    --text:#E3E7F3;--muted:#9AA4C4;--faint:#6D779A;
+    --brand:#9395FF;--brand-ink:#0F1330;--brand-soft:#252A5C;
+    --crit:#FF6A80;--crit-soft:#3A1622;--high:#FF9C5A;--high-soft:#3A2515;
+    --med:#EFC54C;--med-soft:#352C10;--low:#4FD3A1;--low-soft:#12322A;
+    --hover:#1D2540;--shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);--scrim:rgba(0,0,0,.55);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1322;--panel:#151B2E;--panel2:#1A2137;--line:#252E48;--line2:#33405F;
+  --text:#E3E7F3;--muted:#9AA4C4;--faint:#6D779A;
+  --brand:#9395FF;--brand-ink:#0F1330;--brand-soft:#252A5C;
+  --crit:#FF6A80;--crit-soft:#3A1622;--high:#FF9C5A;--high-soft:#3A2515;
+  --med:#EFC54C;--med-soft:#352C10;--low:#4FD3A1;--low-soft:#12322A;
+  --hover:#1D2540;--shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);--scrim:rgba(0,0,0,.55);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font:14px/1.45 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:60;background:var(--panel)}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:6px}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.01em}
+h1{font-size:22px}h2{font-size:16px}h3{font-size:14px}
+p{margin:0}
+a{color:var(--brand)}
+.app{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100%}
+/* sidebar */
+.side{position:sticky;top:env(safe-area-inset-top,0px);height:calc(100dvh - env(safe-area-inset-top,0px));display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line);padding:16px 12px;overflow:auto;z-index:40}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 18px}
+.brand-mark{width:34px;height:34px;border-radius:10px;background:var(--brand);display:grid;place-items:center;color:var(--brand-ink)}
+.brand b{display:block;font-size:15px;letter-spacing:-.01em}
+.brand span{font-size:12px;color:var(--muted)}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav-group{font-size:12px;color:var(--faint);padding:14px 10px 6px}
+.nav button{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:0;background:none;border-radius:8px;cursor:pointer;color:var(--muted);text-align:left;font-weight:500}
+.nav button:hover{background:var(--hover);color:var(--text)}
+.nav button[aria-current="page"]{background:var(--brand-soft);color:var(--brand)}
+.nav svg{width:18px;height:18px;flex:none}
+.nav .count{margin-left:auto;font-size:11.5px;font-weight:600;background:var(--crit);color:#fff;border-radius:10px;padding:1px 7px}
+.side-foot{margin-top:auto;padding:12px 8px 4px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);display:grid;gap:8px}
+.demo-pill{display:flex;gap:8px;align-items:flex-start;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px}
+.demo-pill i{width:8px;height:8px;border-radius:50%;background:var(--low);margin-top:5px;flex:none}
+/* topbar */
+.main{min-width:0;display:flex;flex-direction:column}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;display:flex;align-items:center;gap:10px;padding:10px 22px;background:var(--panel);border-bottom:1px solid var(--line)}
+.icon-btn.menu-btn{display:none}
+[hidden]{display:none!important}
+.search{position:relative;flex:1;max-width:460px}
+.search input{width:100%;height:36px;border:1px solid var(--line);background:var(--panel2);border-radius:9px;padding:0 12px 0 34px}
+.search>svg{position:absolute;left:10px;top:9px;width:18px;height:18px;color:var(--faint)}
+.search kbd{position:absolute;right:8px;top:8px;font:11px "IBM Plex Mono",monospace;border:1px solid var(--line2);border-radius:5px;padding:1px 6px;color:var(--faint)}
+.results{position:absolute;top:42px;left:0;right:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);max-height:380px;overflow:auto;display:none;z-index:50}
+.results.open{display:block}
+.results button{display:flex;gap:10px;align-items:center;width:100%;border:0;background:none;padding:9px 12px;text-align:left;cursor:pointer}
+.results button:hover,.results button.active{background:var(--hover)}
+.results small{color:var(--faint);margin-left:auto;font-size:11.5px}
+.top-spacer{flex:1}
+.btn{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 13px;border-radius:9px;border:1px solid var(--line2);background:var(--panel);cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{background:var(--hover)}
+.btn svg{width:16px;height:16px}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.danger{color:var(--crit);border-color:color-mix(in srgb,var(--crit) 40%,var(--line2))}
+.btn.sm{height:28px;padding:0 10px;font-size:13px;border-radius:7px}
+.btn.ghost{border-color:transparent;background:none}
+.btn.ghost:hover{background:var(--hover)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.icon-btn{width:34px;height:34px;display:grid;place-items:center;border-radius:9px;border:1px solid var(--line2);background:var(--panel);cursor:pointer;position:relative}
+.icon-btn:hover{background:var(--hover)}
+.icon-btn svg{width:18px;height:18px}
+.badge-dot{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;border-radius:9px;background:var(--crit);color:#fff;font-size:11px;font-weight:600;display:grid;place-items:center;padding:0 5px}
+.live{display:flex;align-items:center;gap:6px;border:1px solid var(--line2);border-radius:9px;padding:3px 3px 3px 10px;height:34px}
+.live .dot{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+.live.on .dot{background:var(--low);box-shadow:0 0 0 0 var(--low);animation:pulse 1.6s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--low) 60%,transparent)}70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.live select{height:26px;border:0;background:var(--panel2);border-radius:6px;padding:0 4px;font-size:12.5px}
+.newpill{display:none;align-items:center;gap:6px;height:30px;border-radius:15px;padding:0 12px;background:var(--brand-soft);color:var(--brand);border:0;font-weight:600;font-size:12.5px;cursor:pointer}
+.newpill.show{display:inline-flex}
+/* content */
+.content{padding:22px;display:grid;gap:18px;max-width:1500px;width:100%}
+.page-head{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.page-head p{color:var(--muted);margin-top:4px;max-width:70ch}
+.page-head .actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);min-width:0}
+.panel-h{display:flex;align-items:center;gap:10px;padding:14px 16px 0}
+.panel-h p{color:var(--muted);font-size:12.5px}
+.panel-h .r{margin-left:auto;display:flex;gap:6px;align-items:center}
+.panel-b{padding:14px 16px 16px}
+.grid{display:grid;gap:18px}
+.g-kpi{grid-template-columns:repeat(5,minmax(0,1fr))}
+.g-2{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+.g-2e{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.kpi{padding:14px 16px;display:grid;gap:4px;align-content:start}
+.kpi .lbl{color:var(--muted);font-size:12.5px;display:flex;align-items:center;gap:6px}
+.kpi .val{font-size:28px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .sub{font-size:12px;color:var(--faint)}
+.kpi .sub b{font-weight:600}
+.chart-box{position:relative;height:240px}
+.chart-box.sm{height:200px}
+.chart-fallback{display:grid;place-items:center;height:100%;color:var(--faint);font-size:13px}
+/* gate hero */
+.gate{position:relative;overflow:hidden}
+.gate-head{display:flex;align-items:flex-start;gap:16px;padding:16px 18px 0;flex-wrap:wrap}
+.gate-head h2{font-size:18px}
+.gate-head p{color:var(--muted);font-size:13px;margin-top:3px;max-width:62ch}
+.gate-stats{margin-left:auto;display:flex;gap:22px}
+.gate-stats div{display:grid}
+.gate-stats b{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.gate-stats span{font-size:12px;color:var(--muted)}
+.gate svg{display:block;width:100%;height:auto}
+.gate .lane{fill:none;stroke:var(--line2);stroke-width:1.2}
+.gate .node rect{fill:var(--panel2);stroke:var(--line2)}
+.gate .node text{fill:var(--text);font-size:12.5px}
+.gate .node .s{fill:var(--faint);font-size:11px}
+.gate .core rect{fill:var(--brand)}
+.gate .core text{fill:var(--brand-ink)}
+.gate .ripple{fill:none;stroke:var(--crit);stroke-width:2}
+.gate-foot{display:flex;gap:10px;align-items:center;padding:0 18px 16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.legend{display:flex;gap:14px;flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+/* chips */
+.chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.sev-critical{color:var(--crit);background:var(--crit-soft)}
+.sev-high{color:var(--high);background:var(--high-soft)}
+.sev-medium{color:var(--med);background:var(--med-soft)}
+.sev-low{color:var(--low);background:var(--low-soft)}
+.sev-none{color:var(--muted);background:var(--panel2)}
+.tag{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;font-size:12px;font-weight:500;background:var(--panel2);border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.tag.brand{background:var(--brand-soft);border-color:transparent;color:var(--brand)}
+.tag.ok{background:var(--low-soft);border-color:transparent;color:var(--low)}
+.tag.warn{background:var(--med-soft);border-color:transparent;color:var(--med)}
+.tag.bad{background:var(--crit-soft);border-color:transparent;color:var(--crit)}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:500}
+.status i{width:8px;height:8px;border-radius:50%}
+/* tables */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:500;color:var(--muted);font-size:12px;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--panel)}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr{cursor:default}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover{background:var(--hover)}
+tbody tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.who{display:flex;align-items:center;gap:9px;min-width:0}
+.avatar{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:600;flex:none;color:#fff}
+.who b{font-weight:500;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who small{color:var(--faint);font-size:11.5px;display:block;white-space:nowrap}
+.appdot{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;font-size:10.5px;font-weight:700;flex:none;color:#fff}
+.muted{color:var(--muted)}.faint{color:var(--faint)}
+.small{font-size:12.5px}
+.nowrap{white-space:nowrap}
+/* filters */
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+.field{display:grid;gap:5px}
+.field label{font-size:12px;color:var(--muted);font-weight:500}
+.inp,.sel{height:32px;border:1px solid var(--line2);border-radius:8px;background:var(--panel);padding:0 10px;min-width:0}
+.sel{padding-right:6px}
+textarea.inp{height:auto;padding:10px;resize:vertical;line-height:1.5}
+.inp.grow{flex:1;min-width:180px}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--panel);height:30px;padding:0 11px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line2)}
+.seg button[aria-pressed="true"]{background:var(--brand-soft);color:var(--brand);font-weight:600}
+.pager{display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.pager .r{margin-left:auto;display:flex;gap:6px}
+.empty{padding:40px 16px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--text);margin-bottom:4px}
+/* switch */
+.switch{position:relative;width:36px;height:20px;flex:none}
+.switch input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer;z-index:1}
+.switch span{position:absolute;inset:0;background:var(--line2);border-radius:10px;transition:background .15s}
+.switch span::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.switch input:checked+span{background:var(--brand)}
+.switch input:checked+span::after{transform:translateX(16px)}
+.switch input:focus-visible+span{outline:2px solid var(--brand);outline-offset:2px}
+/* lists */
+.list{display:grid}
+.li{display:flex;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid var(--line)}
+.li:first-child{border-top:0}
+.li.click{cursor:pointer}
+.li.click:hover{background:var(--hover)}
+.li .grow{flex:1;min-width:0}
+.li .t{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li .d{font-size:12px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar{height:6px;border-radius:3px;background:var(--panel2);overflow:hidden;min-width:60px}
+.bar i{display:block;height:100%;border-radius:3px}
+/* rules */
+.rule{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;padding:14px 16px;border-top:1px solid var(--line);align-items:start}
+.rule:first-child{border-top:0}
+.rule .meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center}
+.rule .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.rule.off{opacity:.6}
+.params{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;padding:10px;background:var(--panel2);border-radius:10px}
+.params .inp{width:110px}
+.params .inp.wide{width:280px}
+.rid{font:500 11.5px "IBM Plex Mono",monospace;color:var(--faint)}
+/* drawer & modal */
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:70;opacity:0;pointer-events:none;transition:opacity .2s}
+.scrim.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--panel);z-index:80;transform:translateX(100%);transition:transform .25s ease;display:flex;flex-direction:column;border-left:1px solid var(--line);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.drawer.open{transform:none}
+.drawer-h{display:flex;gap:10px;align-items:flex-start;padding:18px 20px;border-bottom:1px solid var(--line)}
+.drawer-h .grow{flex:1;min-width:0}
+.drawer-b{overflow:auto;padding:18px 20px;display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-content:start}
+.drawer-f{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap}
+.sec h3{margin-bottom:8px}
+.kv{display:grid;grid-template-columns:140px minmax(0,1fr);gap:7px 12px;font-size:13px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.why{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.why table td,.why table th{padding:8px 10px}
+.check{color:var(--crit);font-weight:700}
+.callout{background:var(--brand-soft);color:var(--text);border-radius:10px;padding:12px 14px;font-size:13px}
+.callout b{color:var(--brand)}
+.steps{margin:0;padding-left:20px;display:grid;gap:5px}
+.timeline{display:grid;gap:0;border-left:2px solid var(--line);margin-left:6px}
+.timeline div{position:relative;padding:4px 0 10px 16px;font-size:13px}
+.timeline div::before{content:"";position:absolute;left:-6px;top:9px;width:10px;height:10px;border-radius:50%;background:var(--panel);border:2px solid var(--line2)}
+.timeline div.hit::before{border-color:var(--crit);background:var(--crit)}
+.timeline small{color:var(--faint);display:block}
+pre.json{margin:0;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;overflow:auto;max-height:280px;font:12px/1.55 "IBM Plex Mono",monospace}
+.note{border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:13px}
+.note small{color:var(--faint);display:block;margin-bottom:2px}
+.modal{position:fixed;inset:0;display:grid;place-items:center;z-index:90;pointer-events:none;padding:16px}
+.modal .box{width:min(640px,100%);max-height:calc(100dvh - 32px);overflow:auto;background:var(--panel);border-radius:16px;border:1px solid var(--line);box-shadow:var(--shadow);transform:translateY(10px);opacity:0;transition:.2s;pointer-events:none}
+.modal.open .box{transform:none;opacity:1;pointer-events:auto}
+.box-h{padding:18px 20px 0;display:flex;gap:10px}
+.box-b{padding:16px 20px;display:grid;gap:14px}
+.box-f{padding:0 20px 18px;display:flex;justify-content:flex-end;gap:8px}
+.cond{display:grid;grid-template-columns:1.2fr 1fr 1.2fr auto;gap:8px;align-items:center}
+/* toasts */
+.toasts{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));display:grid;gap:8px;z-index:100;width:min(360px,calc(100% - 36px))}
+.toast{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:12px 14px;display:flex;gap:10px;align-items:flex-start;font-size:13px;animation:tin .25s ease}
+.toast b{display:block}
+.toast .x{margin-left:auto;border:0;background:none;cursor:pointer;color:var(--faint);padding:0 2px}
+@keyframes tin{from{transform:translateY(8px);opacity:0}}
+/* dlp */
+.scan-out{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;white-space:pre-wrap;font:12.5px/1.65 "IBM Plex Mono",monospace;max-height:320px;overflow:auto;overflow-wrap:anywhere}
+mark{border-radius:4px;padding:0 2px;color:inherit}
+mark.critical{background:var(--crit-soft);box-shadow:inset 0 -2px 0 var(--crit)}
+mark.high{background:var(--high-soft);box-shadow:inset 0 -2px 0 var(--high)}
+mark.medium{background:var(--med-soft);box-shadow:inset 0 -2px 0 var(--med)}
+mark.low{background:var(--low-soft);box-shadow:inset 0 -2px 0 var(--low)}
+.verdict{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;background:var(--panel2);border:1px solid var(--line)}
+.verdict b{font-size:18px}
+/* test lab */
+.res-pass{color:var(--low);font-weight:600}
+.res-fail{color:var(--crit);font-weight:600}
+.score-ring{width:96px;height:96px}
+.big{font-size:34px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.drop{border:1.5px dashed var(--line2);border-radius:12px;padding:22px;text-align:center;color:var(--muted);display:grid;gap:8px;place-items:center}
+.drop.over{border-color:var(--brand);background:var(--brand-soft)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);padding:0 16px;overflow-x:auto}
+.tabs button{border:0;background:none;padding:10px 10px;cursor:pointer;color:var(--muted);font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--brand);border-bottom-color:var(--brand)}
+.ctl-cov{display:grid;grid-template-columns:110px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 16px;border-top:1px solid var(--line)}
+.ctl-cov:first-child{border-top:0}
+.hide-sm{}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (max-width:1180px){.g-kpi{grid-template-columns:repeat(3,minmax(0,1fr))}.g-2,.g-3{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:860px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .side{position:fixed;left:0;top:0;bottom:0;height:auto;width:260px;transform:translateX(-100%);transition:transform .25s;padding-top:calc(16px + env(safe-area-inset-top,0px))}
+  .side.open{transform:none;box-shadow:var(--shadow)}
+  .icon-btn.menu-btn{display:grid}
+  .top{padding:10px 12px;flex-wrap:wrap}
+  .search{order:5;flex-basis:100%;max-width:none}
+  .content{padding:14px}
+  .g-kpi{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .g-2e{grid-template-columns:minmax(0,1fr)}
+  .gate-stats{margin-left:0}
+  .hide-sm{display:none}
+  .kv{grid-template-columns:110px minmax(0,1fr)}
+  .rule{grid-template-columns:auto minmax(0,1fr)}
+  .rule .ctl{grid-column:1/-1;justify-content:flex-start}
+  .cond{grid-template-columns:1fr 1fr}
+  .live-label{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side" id="side" aria-label="Main navigation">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/><path d="M9 12h6M12 9v6"/></svg></div>
+      <div><b>CloudGate</b><span>Cloud Access Security Broker</span></div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">
+      <div class="demo-pill"><i></i><div><b style="color:var(--text)">Demo mode</b><br>Fictional organisation and users. Monitoring only; enforcement actions are simulated.</div></div>
+      <div>Meridian Tech (fictional) · v1.0 prototype</div>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="top">
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open navigation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      <div class="search" role="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="q" type="search" placeholder="Search users, apps, alerts, files" autocomplete="off" aria-label="Search">
+        <kbd class="hide-sm">/</kbd>
+        <div class="results" id="results" role="listbox"></div>
+      </div>
+      <div class="top-spacer"></div>
+      <button class="newpill" id="newPill">Refresh view</button>
+      <div class="live" id="liveBox">
+        <i class="dot"></i><span class="live-label small" id="liveLabel">Live feed off</span>
+        <select id="speed" aria-label="Simulation speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select>
+        <button class="btn sm primary" id="liveBtn">Start</button>
+      </div>
+      <button class="icon-btn" id="bellBtn" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 003.4 0"/></svg><span class="badge-dot" id="bellCount" hidden>0</span></button>
+      <button class="icon-btn" id="themeBtn" aria-label="Toggle colour theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg></button>
+    </header>
+    <main class="content" id="view" tabindex="-1"></main>
+  </div>
+</div>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true" role="dialog" aria-modal="true"></aside>
+<div class="modal" id="modal" role="dialog" aria-modal="true"><div class="box" id="modalBox"></div></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+'use strict';
+/* ============================================================
+   Utilities
+   ============================================================ */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const MIN = 60e3, HOUR = 36e5, DAY = 864e5;
+const fmtN = n => Number(n).toLocaleString('en-IN');
+const pad = n => String(n).padStart(2, '0');
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmtTime = ts => { const d = new Date(ts); return `${d.getDate()} ${MON[d.getMonth()]}, ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const fmtFull = ts => { const d = new Date(ts); return `${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; };
+const fmtDay = ts => { const d = new Date(ts); return `${d.getDate()} ${MON[d.getMonth()]}`; };
+const ago = ts => { const s = (Date.now() - ts) / 1e3; if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s/60) + 'm ago'; if (s < 86400) return Math.floor(s/3600) + 'h ago'; return Math.floor(s/86400) + 'd ago'; };
+const fmtSize = mb => mb == null ? '' : mb >= 1024 ? (mb/1024).toFixed(2) + ' GB' : mb >= 1 ? mb.toFixed(1) + ' MB' : Math.round(mb*1024) + ' KB';
+const startOfDay = ts => { const d = new Date(ts); d.setHours(0,0,0,0); return d.getTime(); };
+const isoDate = ts => { const d = new Date(ts); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function haversine(a, b){ const R=6371, r=x=>x*Math.PI/180; const dLat=r(b.lat-a.lat), dLon=r(b.lon-a.lon); const h=Math.sin(dLat/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLon/2)**2; return 2*R*Math.asin(Math.sqrt(h)); }
+const SEV_ORDER = {critical:4, high:3, medium:2, low:1};
+const SEV_LABEL = {critical:'Critical', high:'High', medium:'Medium', low:'Low'};
+const sevChip = s => `<span class="chip sev-${s}">${SEV_LABEL[s] || 'None'}</span>`;
+
+const ICONS = {
+  overview:'<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
+  activity:'<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+  alerts:'<path d="M12 3l9 16H3l9-16z"/><path d="M12 10v4M12 17.5v.01"/>',
+  policies:'<path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/>',
+  users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.3-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 010 7M18 14.6c1.8.7 3 2.5 3.5 5.4"/>',
+  apps:'<path d="M7 18a4.5 4.5 0 01-.8-8.9A6 6 0 0117.8 8 4.5 4.5 0 0117 18H7z"/>',
+  dlp:'<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/><path d="M12 14v3"/>',
+  ingest:'<path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 15v4a2 2 0 002 2h12a2 2 0 002-2v-4"/>',
+  lab:'<path d="M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 006 21h12a1.7 1.7 0 001.5-2.5L14 9V3"/><path d="M7 15h10"/>',
+  reports:'<path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9l-6-6z"/><path d="M14 3v6h6M8 17v-3M12 17v-6M16 17v-2"/>',
+  close:'<path d="M6 6l12 12M18 6L6 18"/>',
+  download:'<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  play:'<path d="M7 4l13 8-13 8V4z"/>',
+  refresh:'<path d="M20 11a8 8 0 10-2.3 5.7"/><path d="M20 4v7h-7"/>'
+};
+const icon = (n, s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
+
+/* ============================================================
+   Reference data (all fictional)
+   ============================================================ */
+const PLACES = {
+  'Jammu':{country:'IN',lat:32.73,lon:74.86}, 'New Delhi':{country:'IN',lat:28.61,lon:77.21}, 'Mumbai':{country:'IN',lat:19.08,lon:72.88},
+  'Bengaluru':{country:'IN',lat:12.97,lon:77.59}, 'Pune':{country:'IN',lat:18.52,lon:73.86}, 'London':{country:'GB',lat:51.51,lon:-0.13},
+  'Singapore':{country:'SG',lat:1.35,lon:103.82}, 'New York':{country:'US',lat:40.71,lon:-74.01}, 'Frankfurt':{country:'DE',lat:50.11,lon:8.68},
+  'Amsterdam':{country:'NL',lat:52.37,lon:4.90}, 'São Paulo':{country:'BR',lat:-23.55,lon:-46.63}, 'Toronto':{country:'CA',lat:43.65,lon:-79.38},
+  'Sydney':{country:'AU',lat:-33.87,lon:151.21}, 'Dubai':{country:'AE',lat:25.20,lon:55.27}
+};
+const COUNTRY = {IN:'India',GB:'United Kingdom',SG:'Singapore',US:'United States',DE:'Germany',NL:'Netherlands',BR:'Brazil',CA:'Canada',AU:'Australia',AE:'UAE'};
+const COUNTRY_CENTER = {IN:{lat:22.5,lon:79},GB:{lat:52.5,lon:-1.5},SG:{lat:1.35,lon:103.8},US:{lat:39,lon:-98},DE:{lat:51,lon:10},NL:{lat:52.2,lon:5.3},BR:{lat:-10,lon:-52},CA:{lat:56,lon:-106},AU:{lat:-25,lon:134},AE:{lat:24,lon:54}};
+const DOMAIN = 'meridiantech.demo';
+const AV_COLORS = ['#5B5FD6','#1F8A70','#C0563B','#8B5CF6','#0E7490','#B45309','#BE185D','#4D7C0F','#6D28D9','#0F766E','#9F1239','#1D4ED8','#A16207','#7C3AED'];
+const USERS = [
+  {id:'u01',name:'Aarav Mehta',dept:'Finance',role:'Financial Analyst',city:'Mumbai',home:['IN'],apps:['m365','sfdc','slack','gws']},
+  {id:'u02',name:'Ishita Rao',dept:'Engineering',role:'Senior Developer',city:'Bengaluru',home:['IN'],apps:['github','aws','slack','m365']},
+  {id:'u03',name:'Kabir Singh',dept:'IT',role:'Cloud Administrator',city:'New Delhi',home:['IN'],apps:['m365','aws','gws','slack'],admin:true},
+  {id:'u04',name:'Meera Iyer',dept:'HR',role:'HR Manager',city:'Pune',home:['IN'],apps:['gws','m365','zoom']},
+  {id:'u05',name:'Rohan Kapoor',dept:'Sales',role:'Account Executive',city:'New Delhi',home:['IN'],apps:['sfdc','m365','zoom','slack']},
+  {id:'u06',name:'Sana Qureshi',dept:'Legal',role:'Legal Counsel',city:'Jammu',home:['IN'],apps:['m365','dropbox','zoom']},
+  {id:'u07',name:'Vikram Joshi',dept:'Engineering',role:'DevOps Engineer',city:'Bengaluru',home:['IN'],apps:['aws','github','slack','gws']},
+  {id:'u08',name:'Neha Bhat',dept:'Marketing',role:'Content Lead',city:'Jammu',home:['IN'],apps:['gws','dropbox','slack','notion']},
+  {id:'u09',name:'Daniel Brooks',dept:'Sales',role:'Regional Director',city:'London',home:['GB'],apps:['sfdc','m365','zoom']},
+  {id:'u10',name:'Priya Nair',dept:'Finance',role:'Financial Controller',city:'Mumbai',home:['IN'],apps:['m365','sfdc','dropbox']},
+  {id:'u11',name:'Arjun Malhotra',dept:'Engineering',role:'Engineering Intern',city:'Pune',home:['IN'],apps:['github','slack','gws']},
+  {id:'u12',name:'Emily Chen',dept:'Product',role:'Product Manager',city:'Singapore',home:['SG'],apps:['notion','slack','gws','zoom']},
+  {id:'u13',name:'Farhan Ali',dept:'Support',role:'Support Specialist',city:'New Delhi',home:['IN'],apps:['dropbox','slack','m365']},
+  {id:'u14',name:'Tanvi Desai',dept:'Executive',role:'Chief Financial Officer',city:'Mumbai',home:['IN','SG'],apps:['m365','zoom','dropbox']}
+];
+USERS.forEach((u,i)=>{ u.email = u.name.toLowerCase().replace(/ /g,'.') + '@' + DOMAIN; u.color = AV_COLORS[i % AV_COLORS.length]; u.initials = u.name.split(' ').map(x=>x[0]).join(''); u.device = i % 4 === 3 ? 'Desktop' : 'Laptop'; });
+const SOC_TEAM = ['Unassigned','You (SOC analyst)','Kabir Singh (IT)','Security on-call'];
+
+const APP_SEED = [
+  {id:'m365',name:'Microsoft 365',cat:'Productivity',status:'sanctioned',color:'#D24726',attrs:{mfa:true,sso:true,enc:true,certs:['ISO 27001','SOC 2'],breach:false,residency:'India / EU'}},
+  {id:'gws',name:'Google Workspace',cat:'Productivity',status:'sanctioned',color:'#1A73E8',attrs:{mfa:true,sso:true,enc:true,certs:['ISO 27001','SOC 2'],breach:false,residency:'India / US'}},
+  {id:'sfdc',name:'Salesforce',cat:'CRM',status:'sanctioned',color:'#0B8DD6',attrs:{mfa:true,sso:true,enc:true,certs:['ISO 27001','SOC 2'],breach:false,residency:'US'}},
+  {id:'slack',name:'Slack',cat:'Collaboration',status:'sanctioned',color:'#4A154B',attrs:{mfa:true,sso:true,enc:true,certs:['ISO 27001','SOC 2'],breach:false,residency:'US'}},
+  {id:'github',name:'GitHub',cat:'Development',status:'sanctioned',color:'#24292F',attrs:{mfa:true,sso:true,enc:true,certs:['SOC 2'],breach:false,residency:'US'}},
+  {id:'aws',name:'AWS Console',cat:'Infrastructure',status:'sanctioned',color:'#C76E00',attrs:{mfa:true,sso:true,enc:true,certs:['ISO 27001','SOC 2'],breach:false,residency:'India (Mumbai)'}},
+  {id:'dropbox',name:'Dropbox Business',cat:'File storage',status:'sanctioned',color:'#0061FE',attrs:{mfa:true,sso:true,enc:true,certs:['ISO 27001'],breach:false,residency:'US'}},
+  {id:'zoom',name:'Zoom',cat:'Meetings',status:'sanctioned',color:'#2D8CFF',attrs:{mfa:true,sso:true,enc:true,certs:['SOC 2'],breach:false,residency:'US'}},
+  {id:'notion',name:'Notion',cat:'Knowledge base',status:'review',color:'#37352F',attrs:{mfa:true,sso:false,enc:true,certs:['SOC 2'],breach:false,residency:'US'}},
+  {id:'dropzap',name:'DropZap',cat:'File transfer',status:'unsanctioned',color:'#9333EA',fictional:true,attrs:{mfa:false,sso:false,enc:false,certs:[],breach:true,residency:'Unknown'}},
+  {id:'pastevault',name:'PasteVault',cat:'Paste site',status:'unsanctioned',color:'#B91C1C',fictional:true,attrs:{mfa:false,sso:false,enc:false,certs:[],breach:false,residency:'Unknown'}},
+  {id:'quickpdf',name:'QuickPDF Online',cat:'Document utility',status:'unsanctioned',color:'#0F766E',fictional:true,attrs:{mfa:false,sso:false,enc:true,certs:[],breach:false,residency:'Unknown'}}
+];
+
+const DOCS = [['Team_Standup_Notes.docx','Internal'],['Product_Roadmap_2027.pptx','Confidential'],['Marketing_Calendar.xlsx','Internal'],['Brand_Guidelines.pdf','Public'],['Vendor_Contract_Draft.docx','Confidential'],['Sprint_Retro.md','Internal'],['Customer_Feedback_Q3.csv','Confidential'],['Press_Kit.zip','Public'],['Architecture_Overview.pdf','Internal'],['Salary_Bands_2026.xlsx','Restricted'],['Incident_Postmortem.docx','Internal'],['Pricing_Model_v4.xlsx','Confidential'],['Onboarding_Checklist.pdf','Internal'],['Release_Notes_v3.2.md','Public']];
+const LABELS = ['Public','Internal','Confidential','Restricted'];
+const LABEL_TAG = {Public:'ok',Internal:'',Confidential:'warn',Restricted:'bad'};
+
+const FILE_SEED = [
+  {id:'f01',name:'Q3_Board_Financials.xlsx',label:'Restricted',owner:'u14',app:'m365',exposure:'external',sizeMB:4.2},
+  {id:'f02',name:'Payroll_Oct2026.csv',label:'Restricted',owner:'u04',app:'gws',exposure:'public',sizeMB:1.8},
+  {id:'f03',name:'Customer_Master_List.csv',label:'Confidential',owner:'u05',app:'sfdc',exposure:'external',sizeMB:22.4},
+  {id:'f04',name:'Brand_Guidelines.pdf',label:'Public',owner:'u08',app:'dropbox',exposure:'public',sizeMB:12.1},
+  {id:'f05',name:'prod-db-credentials.env',label:'Restricted',owner:'u07',app:'github',exposure:'internal',sizeMB:0.01},
+  {id:'f06',name:'Salary_Bands_2026.xlsx',label:'Restricted',owner:'u04',app:'m365',exposure:'private',sizeMB:0.6},
+  {id:'f07',name:'Product_Roadmap_2027.pptx',label:'Confidential',owner:'u12',app:'notion',exposure:'internal',sizeMB:18.3},
+  {id:'f08',name:'Vendor_Contract_Draft.docx',label:'Confidential',owner:'u06',app:'dropbox',exposure:'external',sizeMB:0.9},
+  {id:'f09',name:'Press_Kit.zip',label:'Public',owner:'u08',app:'gws',exposure:'public',sizeMB:84},
+  {id:'f10',name:'Pricing_Model_v4.xlsx',label:'Confidential',owner:'u10',app:'m365',exposure:'public',sizeMB:2.3},
+  {id:'f11',name:'Incident_Postmortem.docx',label:'Internal',owner:'u03',app:'gws',exposure:'internal',sizeMB:0.4},
+  {id:'f12',name:'Audit_Evidence_FY26.zip',label:'Restricted',owner:'u10',app:'dropbox',exposure:'private',sizeMB:640},
+  {id:'f13',name:'Architecture_Overview.pdf',label:'Internal',owner:'u02',app:'github',exposure:'internal',sizeMB:3.1},
+  {id:'f14',name:'Interview_Feedback.xlsx',label:'Confidential',owner:'u04',app:'gws',exposure:'private',sizeMB:0.3}
+];
+const EXPOSURE_LABEL = {private:'Private',internal:'Internal only',external:'Shared externally',public:'Public link'};
+
+/* Policy library: every rule is explainable — it returns the conditions it checked */
+const RULES = [
+  {id:'AC-01',name:'Repeated failed sign-ins',cat:'Access control',sev:'high',params:{count:5,windowMin:10},labels:{count:'Failed attempts',windowMin:'Window (min)'},
+   desc:'A user fails to sign in many times within a short window, a common sign of password guessing.',mitre:'T1110 · Brute Force',
+   rec:['Contact the user to confirm whether they were locked out','Force a password reset and re-enrol MFA','Block the source IP if attempts continue from it']},
+  {id:'AC-02',name:'Sign-in from unrecognised country',cat:'Access control',sev:'medium',params:{},labels:{},
+   desc:'A successful sign-in comes from a country outside the user\u2019s usual locations.',mitre:'T1078 · Valid Accounts',
+   rec:['Verify travel plans with the user or their manager','Require step-up MFA for the session','Add the country to the user\u2019s baseline if travel is confirmed']},
+  {id:'AC-03',name:'Impossible travel',cat:'Access control',sev:'critical',params:{maxSpeedKmh:900},labels:{maxSpeedKmh:'Max speed (km/h)'},
+   desc:'Two sign-ins are too far apart for the time between them, so at least one is likely not the real user.',mitre:'T1078 · Valid Accounts',
+   rec:['Revoke all active sessions for the user','Reset credentials and review MFA methods','Check recent file activity from both locations']},
+  {id:'AC-04',name:'Anonymising network',cat:'Access control',sev:'high',params:{},labels:{},
+   desc:'Activity comes through a Tor exit node or anonymising proxy, which hides the real origin.',mitre:'T1090.003 · Multi-hop Proxy',
+   rec:['Confirm the activity with the user','Consider a conditional-access rule that blocks anonymisers','Review all actions taken in the session']},
+  {id:'AC-05',name:'Off-hours activity',cat:'Access control',sev:'low',params:{startHour:22,endHour:6},labels:{startHour:'From hour',endHour:'To hour'},
+   desc:'Activity happens outside working hours. Low severity on its own; useful context next to other alerts.',mitre:'T1078 · Valid Accounts',
+   rec:['Check whether the user normally works late or across time zones','Correlate with other alerts for the same user']},
+  {id:'DP-01',name:'Unusually large download',cat:'Data protection',sev:'high',params:{thresholdMB:500,criticalMB:2000},labels:{thresholdMB:'High above (MB)',criticalMB:'Critical above (MB)'},
+   desc:'A single download is far larger than normal working activity and may indicate data theft.',mitre:'T1530 · Data from Cloud Storage',
+   rec:['Ask the user about the business reason for the download','Check the file\u2019s classification and destination device','Suspend the session if the device is unmanaged']},
+  {id:'DP-02',name:'Sensitive file shared publicly',cat:'Data protection',sev:'critical',params:{labels:'Confidential, Restricted'},labels:{labels:'Sensitive labels'},
+   desc:'A file labelled Confidential or Restricted gets a public link that anyone on the internet can open.',mitre:'T1567 · Exfiltration Over Web Service',
+   rec:['Revoke the public link immediately','Notify the file owner and data protection officer','Check access logs for the link since it was created']},
+  {id:'DP-03',name:'Sharing to a personal email domain',cat:'Data protection',sev:'medium',params:{domains:'gmail.com, yahoo.com, outlook.com, proton.me'},labels:{domains:'Personal domains'},
+   desc:'Company data is shared with a personal email account outside the organisation.',mitre:'T1567 · Exfiltration Over Web Service',
+   rec:['Remove the external collaborator','Remind the user of the acceptable-use policy','Escalate if the file is Confidential or Restricted']},
+  {id:'DP-04',name:'Restricted data on an unmanaged device',cat:'Data protection',sev:'medium',params:{},labels:{},
+   desc:'A Restricted file is opened or downloaded on a device the organisation does not manage.',mitre:'T1530 · Data from Cloud Storage',
+   rec:['Ask the user to enrol the device or use a managed one','Apply a view-only session policy for unmanaged devices']},
+  {id:'DP-05',name:'Mass file deletion',cat:'Data protection',sev:'high',params:{count:20,windowMin:15},labels:{count:'Deletions',windowMin:'Window (min)'},
+   desc:'Many files are deleted in a short window, a pattern seen in sabotage and ransomware.',mitre:'T1485 · Data Destruction',
+   rec:['Restore files from the version history or recycle bin','Suspend the account while you investigate','Check the device for malware']},
+  {id:'AR-01',name:'Unsanctioned app in use',cat:'Cloud app risk',sev:'medium',params:{},labels:{},
+   desc:'Someone uses a cloud app the organisation has marked as unsanctioned (shadow IT).',mitre:'T1567.002 · Exfiltration to Cloud Storage',
+   rec:['Tell the user which approved app to use instead','Review what data was uploaded to the app','Block the app at the proxy if it keeps happening']},
+  {id:'AR-02',name:'Risky third-party app permission',cat:'Cloud app risk',sev:'high',params:{scopes:'files.readwrite.all, mail.read, directory.readwrite.all'},labels:{scopes:'Risky scopes'},
+   desc:'A user grants a third-party app broad access to company files, mail or directory data.',mitre:'T1528 · Steal Application Access Token',
+   rec:['Revoke the app\u2019s OAuth token','Review the publisher and the scopes it asked for','Restrict user consent to verified publishers']},
+  {id:'AR-03',name:'Admin privilege granted',cat:'Cloud app risk',sev:'high',params:{},labels:{},
+   desc:'An administrator role is assigned to an account. Every privilege change should be reviewed.',mitre:'T1098 · Account Manipulation',
+   rec:['Confirm the change has an approved request behind it','Remove the role if it was not approved','Make sure the account has MFA']}
+];
+const RULE_BY_ID = Object.fromEntries(RULES.map(r => [r.id, r]));
+const CATS = ['Access control','Data protection','Cloud app risk','Custom'];
+
+const CONTROLS = [
+  {id:'A.5.15',name:'Access control',rules:['AC-01','AC-02','AC-03','AC-04']},
+  {id:'A.5.23',name:'Information security for use of cloud services',rules:['AR-01','AR-02']},
+  {id:'A.8.2',name:'Privileged access rights',rules:['AR-03']},
+  {id:'A.8.1',name:'User endpoint devices',rules:['DP-04']},
+  {id:'A.8.12',name:'Data leakage prevention',rules:['DP-01','DP-02','DP-03']},
+  {id:'A.8.15',name:'Logging',rules:['*log']},
+  {id:'A.8.16',name:'Monitoring activities',rules:['AC-03','AC-04','AC-05','DP-05']},
+  {id:'A.5.24',name:'Incident management planning and preparation',rules:['*workflow']}
+];
+
+const ACTION_LABEL = {login:'Signed in',login_failed:'Failed sign-in',view:'Viewed file',download:'Downloaded',upload:'Uploaded',share_internal:'Shared internally',share_external:'Shared externally',share_public:'Created public link',delete:'Deleted file',admin_role_change:'Changed admin role',oauth_grant:'Granted app access'};
+const ACTIONS = Object.keys(ACTION_LABEL);
+
+/* ============================================================
+   Persistence (per-viewer, in this browser only)
+   ============================================================ */
+const STORE_KEY = 'cloudgate-casb-v1';
+let P = { rules:{}, custom:[], appStatus:{}, alertMeta:{}, audit:[], imported:[], discovered:[], fileExposure:{}, theme:null };
+try { const raw = localStorage.getItem(STORE_KEY); if (raw) P = Object.assign(P, JSON.parse(raw)); } catch(e) {}
+let saveTimer = null;
+function persist(){ clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { localStorage.setItem(STORE_KEY, JSON.stringify(P)); } catch(e) {} }, 150); }
+function audit(action, detail){ P.audit.unshift({ts:Date.now(), actor:'You (SOC analyst)', action, detail}); P.audit = P.audit.slice(0, 300); persist(); }
+
+/* ============================================================
+   State
+   ============================================================ */
+const S = {
+  view:'overview', events:[], alerts:[], alertsByEvent:new Map(), userById:{}, appById:{},
+  live:false, speed:1, liveTimer:null, queue:[], liveCount:0, newSince:0, unseen:[],
+  act:{q:'',user:'',app:'',action:'',flag:'',range:'7d',page:0},
+  al:{q:'',sev:'',status:'active',cat:'',user:'',page:0,sel:new Set()},
+  rep:{range:'7d'}, lab:{useCurrent:false,last:null,bench:null}, dlpText:null, dlpMask:false, ingest:null, tab:{reports:'summary'},
+  charts:{}, engineState:null, startedAt:Date.now()
+};
+USERS.forEach(u => S.userById[u.id] = u);
+function rebuildApps(){
+  const all = [...APP_SEED, ...P.discovered];
+  all.forEach(a => { a.status = P.appStatus[a.id] || a.status0 || a.status; if (!a.status0) a.status0 = a.status; S.appById[a.id] = a; });
+}
+APP_SEED.forEach(a => a.status0 = a.status);
+rebuildApps();
+const FILES = FILE_SEED.map(f => ({...f, exposure: P.fileExposure[f.id] || f.exposure}));
+
+function appRisk(a){
+  const at = a.attrs || {}; let s = 8; const why = [];
+  if (!at.mfa){ s += 20; why.push(['No multi-factor authentication', 20]); }
+  if (!at.sso){ s += 14; why.push(['No single sign-on support', 14]); }
+  if (!at.enc){ s += 20; why.push(['No encryption at rest', 20]); }
+  if (!at.certs || !at.certs.length){ s += 15; why.push(['No security certifications', 15]); }
+  if (at.breach){ s += 15; why.push(['Known breach in last 3 years', 15]); }
+  if (!at.residency || at.residency === 'Unknown'){ s += 8; why.push(['Data residency unknown', 8]); }
+  return {score: Math.min(100, s), why};
+}
+const riskBand = s => s >= 60 ? 'critical' : s >= 40 ? 'high' : s >= 20 ? 'medium' : 'low';
+
+/* ============================================================
+   Event generation (seeded, so the demo is repeatable)
+   ============================================================ */
+function placeOf(city){ const p = PLACES[city]; return {city, country:p.country, lat:p.lat, lon:p.lon}; }
+function ipFor(rnd, network, country){
+  if (network === 'corporate') return `10.${20 + Math.floor(rnd()*10)}.${Math.floor(rnd()*255)}.${1 + Math.floor(rnd()*250)}`;
+  if (network === 'anonymizer') return `185.220.${100 + Math.floor(rnd()*3)}.${1 + Math.floor(rnd()*250)}`;
+  const base = {IN:'49.36',GB:'81.2',SG:'116.86',US:'73.15',BR:'177.68',NL:'145.53'}[country] || '102.1';
+  return `${base}.${Math.floor(rnd()*255)}.${1 + Math.floor(rnd()*250)}`;
+}
+function mkEvent(o){
+  const u = S.userById[o.user]; const pl = placeOf(o.city || u.city);
+  return { ts:o.ts, user:o.user, app:o.app, action:o.action, status:o.action === 'login_failed' ? 'failure' : 'success',
+    city:pl.city, country:pl.country, lat:pl.lat, lon:pl.lon, ip:o.ip || '0.0.0.0', network:o.network || 'corporate',
+    device:o.device || {type:u.device, managed:true, os:u.device === 'Desktop' ? 'Windows 11' : 'macOS 15'},
+    sizeMB:o.sizeMB ?? null, file:o.file || null, target:o.target || null, scopes:o.scopes || null, role:o.role || null, src:o.src || 'seed' };
+}
+function genHistory(){
+  const rnd = mulberry32(20261027); const now = Date.now(); const day0 = startOfDay(now) - 6*DAY; const evs = [];
+  const pick = arr => arr[Math.floor(rnd()*arr.length)];
+  const add = o => { const e = mkEvent(o); if (e.ts <= now) evs.push(e); };
+  for (let d = 0; d < 7; d++){
+    const dayTs = day0 + d*DAY; const dow = new Date(dayTs).getDay(); const weekend = dow === 0 || dow === 6;
+    for (const u of USERS){
+      const sessions = weekend ? (rnd() < .3 ? 1 : 0) : 2 + Math.floor(rnd()*3);
+      for (let s = 0; s < sessions; s++){
+        let ts = dayTs + (8.6 + rnd()*10.2) * HOUR; const app = pick(u.apps);
+        const network = rnd() < .62 ? 'corporate' : 'home'; const mobile = rnd() < .07;
+        const device = mobile ? {type:'Mobile', managed:false, os:'Android 15'} : undefined;
+        const ip = ipFor(rnd, network, PLACES[u.city].country);
+        if (rnd() < .08){ const n = 1 + Math.floor(rnd()*3); for (let k = 0; k < n; k++){ add({ts, user:u.id, app, action:'login_failed', network, ip, device}); ts += (20 + rnd()*60)*1e3; } }
+        add({ts, user:u.id, app, action:'login', network, ip, device});
+        const n = 2 + Math.floor(rnd()*4);
+        for (let k = 0; k < n; k++){
+          ts += (1 + rnd()*14) * MIN; const r = rnd();
+          const doc = pick(DOCS); const file = {name:doc[0], label:doc[1]};
+          if (r < .38) add({ts, user:u.id, app, action:'view', network, ip, device, file});
+          else if (r < .58) add({ts, user:u.id, app, action:'download', network, ip, device, file, sizeMB: rnd() < .06 ? 100 + rnd()*260 : .2 + rnd()*55});
+          else if (r < .74) add({ts, user:u.id, app, action:'upload', network, ip, device, file, sizeMB:.1 + rnd()*40});
+          else if (r < .86) add({ts, user:u.id, app, action:'share_internal', network, ip, device, file, target:pick(USERS).email});
+          else if (r < .91) add({ts, user:u.id, app, action:'share_external', network, ip, device, file:{name:'Partner_Brief.pdf', label:'Internal'}, target:'liaison@northwind-partners.demo'});
+          else add({ts, user:u.id, app, action:'delete', network, ip, device, file});
+        }
+      }
+    }
+  }
+  /* Injected incidents — the story the demo tells */
+  const at = (d, h, m) => day0 + d*DAY + h*HOUR + m*MIN;
+  // Brute force then success from an anonymiser abroad
+  for (let i = 0; i < 7; i++) add({ts:at(4,14,2) + i*38e3, user:'u05', app:'m365', action:'login_failed', city:'Amsterdam', network:'anonymizer', ip:'185.220.101.47', device:{type:'Desktop',managed:false,os:'Linux'}});
+  add({ts:at(4,14,7), user:'u05', app:'m365', action:'login', city:'Amsterdam', network:'anonymizer', ip:'185.220.101.47', device:{type:'Desktop',managed:false,os:'Linux'}});
+  add({ts:at(4,14,11), user:'u05', app:'m365', action:'download', city:'Amsterdam', network:'anonymizer', ip:'185.220.101.47', device:{type:'Desktop',managed:false,os:'Linux'}, file:{name:'Customer_Master_List.csv',label:'Confidential'}, sizeMB:22.4});
+  // Intern pulls 2.3 GB from GitHub at night on a personal laptop
+  add({ts:at(3,23,32), user:'u11', app:'github', action:'login', network:'home', ip:'49.36.88.14', device:{type:'Laptop',managed:false,os:'Windows 11'}});
+  add({ts:at(3,23,41), user:'u11', app:'github', action:'download', network:'home', ip:'49.36.88.14', device:{type:'Laptop',managed:false,os:'Windows 11'}, file:{name:'platform-monorepo.zip',label:'Confidential'}, sizeMB:2380});
+  // CFO impossible travel: Mumbai then São Paulo 80 minutes later
+  add({ts:at(5,9,10), user:'u14', app:'m365', action:'login', network:'corporate', ip:'10.24.8.19'});
+  add({ts:at(5,10,30), user:'u14', app:'m365', action:'login', city:'São Paulo', network:'home', ip:'177.68.20.4', device:{type:'Laptop',managed:false,os:'Windows 10'}});
+  add({ts:at(5,10,36), user:'u14', app:'m365', action:'view', city:'São Paulo', network:'home', ip:'177.68.20.4', device:{type:'Laptop',managed:false,os:'Windows 10'}, file:{name:'Q3_Board_Financials.xlsx',label:'Restricted'}});
+  // Payroll made public
+  add({ts:at(2,16,20), user:'u04', app:'gws', action:'share_public', network:'corporate', ip:'10.27.3.40', file:{name:'Payroll_Oct2026.csv',label:'Restricted'}});
+  // Pricing model public link
+  add({ts:at(1,12,5), user:'u10', app:'m365', action:'share_public', network:'home', ip:'49.36.12.90', file:{name:'Pricing_Model_v4.xlsx',label:'Confidential'}});
+  // Shadow IT uploads
+  add({ts:at(1,11,48), user:'u08', app:'dropzap', action:'login', network:'home', ip:'49.36.51.2'});
+  add({ts:at(1,11,52), user:'u08', app:'dropzap', action:'upload', network:'home', ip:'49.36.51.2', file:{name:'Campaign_Assets_Final.zip',label:'Internal'}, sizeMB:340});
+  add({ts:at(5,15,3), user:'u12', app:'pastevault', action:'upload', city:'Singapore', network:'home', ip:'116.86.4.77', file:{name:'snippet.txt',label:'Internal'}, sizeMB:.02});
+  // OAuth grant with broad scopes
+  add({ts:at(4,10,15), user:'u07', app:'gws', action:'oauth_grant', network:'corporate', ip:'10.22.9.8', target:'QuickPDF Online', scopes:['files.readwrite.all','profile']});
+  // Mass deletion
+  for (let i = 0; i < 28; i++) add({ts:at(0,17,10) + i*17e3, user:'u13', app:'dropbox', action:'delete', network:'corporate', ip:'10.21.5.33', file:{name:`ticket_export_${1000 + i}.pdf`, label:'Internal'}});
+  // Privilege escalation
+  add({ts:at(5,18,44), user:'u03', app:'m365', action:'admin_role_change', network:'corporate', ip:'10.20.1.5', target:S.userById.u11.email, role:'Global Administrator'});
+  // Personal email sharing
+  add({ts:at(2,19,12), user:'u09', app:'sfdc', action:'share_external', city:'London', network:'home', ip:'81.2.69.160', file:{name:'Customer_Master_List.csv',label:'Confidential'}, target:'daniel.brooks.home@gmail.com'});
+  // Restricted file on a personal phone
+  add({ts:at(3,20,5), user:'u10', app:'dropbox', action:'view', network:'home', ip:'49.36.12.90', device:{type:'Mobile',managed:false,os:'iOS 18'}, file:{name:'Audit_Evidence_FY26.zip',label:'Restricted'}});
+  evs.sort((a, b) => a.ts - b.ts);
+  evs.forEach((e, i) => e.id = 'EV-' + String(10001 + i));
+  return evs;
+}
+
+/* ============================================================
+   Policy engine
+   ============================================================ */
+function ruleConfig(id){ const r = RULE_BY_ID[id]; const o = P.rules[id] || {}; return {enabled:o.enabled ?? true, sev:o.sev || r.sev, mode:o.mode || 'monitor', params:Object.assign({}, r.params, o.params || {})}; }
+const listParam = v => String(v || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+const inWindow = (h, a, b) => a <= b ? (h >= a && h < b) : (h >= a || h < b);
+
+const EVALUATORS = {
+  'AC-01'(e, p, c){ if (e.action !== 'login_failed') return null; const rec = c.st.fail[e.user].filter(x => e.ts - x.ts <= p.windowMin*MIN);
+    if (rec.length < p.count) return null; if (c.cool('AC-01', e.user, e.ts, p.windowMin*MIN)) return null;
+    return {summary:`${rec.length} failed sign-ins to ${c.app.name} within ${p.windowMin} minutes`, related:rec.map(x => x.id),
+      evidence:[['Failed sign-ins in window', rec.length, `\u2265 ${p.count}`],['Window', `${Math.round((e.ts - rec[0].ts)/MIN*10)/10} min`, `\u2264 ${p.windowMin} min`],['Source IP', e.ip, '—']]}; },
+  'AC-02'(e, p, c){ if (e.action !== 'login') return null; if (c.user.home.includes(e.country)) return null; if (c.cool('AC-02', e.user + e.country, e.ts, 6*HOUR)) return null;
+    return {summary:`Signed in from ${e.city}, ${COUNTRY[e.country] || e.country}, outside usual locations`, evidence:[['Sign-in country', COUNTRY[e.country] || e.country, 'Not in baseline'],['Usual countries', c.user.home.map(x => COUNTRY[x]).join(', '), '—']]}; },
+  'AC-03'(e, p, c){ if (e.action !== 'login') return null; const prev = c.st.last[e.user]; if (!prev || prev.country === e.country) return null;
+    const km = haversine(prev, e); const hrs = Math.max((e.ts - prev.ts)/HOUR, 1/60); const speed = km/hrs; if (speed <= p.maxSpeedKmh) return null;
+    return {summary:`Signed in from ${prev.city} and ${e.city} ${Math.round(hrs*60)} minutes apart`, related:[prev.id],
+      evidence:[['Distance between sign-ins', `${fmtN(Math.round(km))} km`, '—'],['Time between sign-ins', `${Math.round(hrs*60)} min`, '—'],['Implied travel speed', `${fmtN(Math.round(speed))} km/h`, `\u2264 ${fmtN(p.maxSpeedKmh)} km/h`]]}; },
+  'AC-04'(e, p, c){ if (e.network !== 'anonymizer') return null; if (c.cool('AC-04', e.user, e.ts, HOUR)) return null;
+    return {summary:`${ACTION_LABEL[e.action]} through an anonymising network (${e.ip})`, evidence:[['Network type', 'Tor exit / anonymiser', 'Corporate or home'],['IP address', e.ip, '—']]}; },
+  'AC-05'(e, p, c){ const h = new Date(e.ts).getHours(); if (!inWindow(h, +p.startHour, +p.endHour)) return null; if (e.action === 'login_failed') return null; if (c.cool('AC-05', e.user, e.ts, 3*HOUR)) return null;
+    return {summary:`Activity at ${pad(h)}:${pad(new Date(e.ts).getMinutes())}, outside working hours`, evidence:[['Local time', `${pad(h)}:${pad(new Date(e.ts).getMinutes())}`, `Outside ${pad(p.startHour)}:00–${pad(p.endHour)}:00`]]}; },
+  'DP-01'(e, p, c){ if (e.action !== 'download' || e.sizeMB == null || e.sizeMB < +p.thresholdMB) return null;
+    return {sev:e.sizeMB >= +p.criticalMB ? 'critical' : null, summary:`Downloaded ${fmtSize(e.sizeMB)} from ${c.app.name}`, evidence:[['Download size', fmtSize(e.sizeMB), `< ${fmtN(p.thresholdMB)} MB`],['File', e.file ? e.file.name : '—', '—'],['Device managed', e.device.managed ? 'Yes' : 'No', '—']]}; },
+  'DP-02'(e, p, c){ if (e.action !== 'share_public' || !e.file) return null; if (!listParam(p.labels).includes(e.file.label.toLowerCase())) return null;
+    return {sev:e.file.label === 'Confidential' && ruleConfig('DP-02').sev === 'critical' ? 'high' : null, summary:`Public link created for ${e.file.label} file ${e.file.name}`,
+      evidence:[['File label', e.file.label, 'Public or Internal only'],['Link audience', 'Anyone with the link', 'Organisation only']]}; },
+  'DP-03'(e, p, c){ if (e.action !== 'share_external' || !e.target) return null; const dom = e.target.split('@')[1] || ''; if (!listParam(p.domains).includes(dom.toLowerCase())) return null;
+    return {summary:`Shared ${e.file ? e.file.name : 'a file'} with personal address ${e.target}`, evidence:[['Recipient domain', dom, 'Not a personal domain'],['File label', e.file ? e.file.label : '—', '—']]}; },
+  'DP-04'(e, p, c){ if (!['view','download'].includes(e.action) || !e.file || e.file.label !== 'Restricted' || e.device.managed) return null;
+    return {summary:`Restricted file opened on unmanaged ${e.device.type.toLowerCase()} (${e.device.os})`, evidence:[['File label', 'Restricted', '—'],['Device managed', 'No', 'Yes'],['Device', `${e.device.type}, ${e.device.os}`, '—']]}; },
+  'DP-05'(e, p, c){ if (e.action !== 'delete') return null; const rec = c.st.del[e.user].filter(x => e.ts - x.ts <= p.windowMin*MIN);
+    if (rec.length < p.count) return null; if (c.cool('DP-05', e.user, e.ts, p.windowMin*MIN)) return null;
+    return {summary:`${rec.length} files deleted from ${c.app.name} within ${p.windowMin} minutes`, related:rec.slice(-12).map(x => x.id), evidence:[['Deletions in window', rec.length, `< ${p.count}`],['Window', `${p.windowMin} min`, '—']]}; },
+  'AR-01'(e, p, c){ if (c.app.status !== 'unsanctioned') return null; if (c.cool('AR-01', e.user + e.app, e.ts, 4*HOUR)) return null;
+    return {summary:`${ACTION_LABEL[e.action]} on unsanctioned app ${c.app.name}`, evidence:[['App status', 'Unsanctioned', 'Sanctioned'],['App risk score', appRisk(c.app).score + ' / 100', '—']]}; },
+  'AR-02'(e, p, c){ if (e.action !== 'oauth_grant' || !e.scopes) return null; const risky = e.scopes.filter(s => listParam(p.scopes).includes(s.toLowerCase())); if (!risky.length) return null;
+    return {summary:`Granted ${e.target} access to ${risky.join(', ')}`, evidence:[['Third-party app', e.target, '—'],['Risky scopes granted', risky.join(', '), 'None']]}; },
+  'AR-03'(e, p, c){ if (e.action !== 'admin_role_change') return null;
+    return {summary:`Assigned ${e.role} to ${e.target}`, evidence:[['Role assigned', e.role, '—'],['Assigned to', e.target, '—'],['Change ticket', 'Not linked', 'Linked']]}; }
+};
+const FIELD_GET = {
+  action:e => e.action, app:e => e.app, appStatus:(e, c) => c.app.status, user:e => e.user, dept:(e, c) => c.user.dept,
+  country:e => e.country, network:e => e.network, managed:e => e.device.managed ? 'yes' : 'no', sizeMB:e => e.sizeMB ?? 0,
+  label:e => e.file ? e.file.label : '', hour:e => new Date(e.ts).getHours()
+};
+const FIELD_LABEL = {action:'Action',app:'App',appStatus:'App status',user:'User',dept:'Department',country:'Country code',network:'Network',managed:'Device managed (yes/no)',sizeMB:'Size (MB)',label:'File label',hour:'Hour of day'};
+const OPS = {eq:'equals', ne:'does not equal', in:'is one of', gt:'greater than', lt:'less than', has:'contains'};
+function evalCond(cond, e, c){
+  const v = FIELD_GET[cond.field](e, c); const val = cond.value; const sv = String(v).toLowerCase(); const sval = String(val).toLowerCase();
+  switch (cond.op){ case 'eq': return sv === sval; case 'ne': return sv !== sval; case 'in': return listParam(val).includes(sv);
+    case 'gt': return +v > +val; case 'lt': return +v < +val; case 'has': return sv.includes(sval); } return false;
+}
+
+function createEngine(opts = {}){
+  const st = {fail:{}, del:{}, last:{}, cool:{}};
+  const cfgFor = id => opts.defaults ? {enabled:true, sev:RULE_BY_ID[id].sev, mode:'monitor', params:{...RULE_BY_ID[id].params}} : ruleConfig(id);
+  const appOf = id => opts.defaults ? (APP_SEED.find(a => a.id === id) ? {...APP_SEED.find(a => a.id === id), status:APP_SEED.find(a => a.id === id).status0} : S.appById[id]) : S.appById[id];
+  const customs = opts.defaults ? [] : P.custom;
+  function process(e){
+    const u = S.userById[e.user]; const app = appOf(e.app) || {id:e.app, name:e.app, status:'review', attrs:{}};
+    st.fail[e.user] = (st.fail[e.user] || []).filter(x => e.ts - x.ts < 2*HOUR);
+    st.del[e.user] = (st.del[e.user] || []).filter(x => e.ts - x.ts < 2*HOUR);
+    if (e.action === 'login_failed') st.fail[e.user].push({ts:e.ts, id:e.id});
+    if (e.action === 'delete') st.del[e.user].push({ts:e.ts, id:e.id});
+    const c = {user:u, app, st, cool:(rid, key, ts, span) => { const k = rid + '|' + key; const last = st.cool[k]; if (last != null && ts - last < span) return true; st.cool[k] = ts; return false; }};
+    const hits = [];
+    for (const r of RULES){
+      const cfg = cfgFor(r.id); if (!cfg.enabled) continue;
+      const res = EVALUATORS[r.id](e, cfg.params, c); if (!res) continue;
+      hits.push({ruleId:r.id, ruleName:r.name, cat:r.cat, sev:res.sev || cfg.sev, mode:cfg.mode, summary:res.summary, evidence:res.evidence, related:res.related || [], rec:r.rec, mitre:r.mitre});
+    }
+    for (const cr of customs){
+      if (!cr.enabled || !cr.conds.length) continue;
+      if (!cr.conds.every(cd => evalCond(cd, e, c))) continue;
+      if (c.cool(cr.id, e.user, e.ts, (cr.cooldownMin || 30)*MIN)) continue;
+      hits.push({ruleId:cr.id, ruleName:cr.name, cat:'Custom', sev:cr.sev, mode:cr.mode || 'monitor', summary:`${cr.name}: ${ACTION_LABEL[e.action] || e.action} on ${app.name}`,
+        evidence:cr.conds.map(cd => [FIELD_LABEL[cd.field], String(FIELD_GET[cd.field](e, c)), `${OPS[cd.op]} ${cd.value}`]), related:[], rec:cr.rec ? [cr.rec] : ['Review the event and decide whether the rule needs tuning'], mitre:'—'});
+    }
+    if (e.action === 'login') st.last[e.user] = {ts:e.ts, city:e.city, country:e.country, lat:e.lat, lon:e.lon, id:e.id};
+    return hits;
+  }
+  return {process};
+}
+function toAlert(e, h){
+  const id = h.ruleId + ':' + e.id; const m = P.alertMeta[id] || {};
+  return {id, ts:e.ts, eventId:e.id, user:e.user, app:e.app, ruleId:h.ruleId, ruleName:h.ruleName, cat:h.cat, sev:h.sev, mode:h.mode,
+    summary:h.summary, evidence:h.evidence, related:h.related, rec:h.rec, mitre:h.mitre, status:m.status || 'open', assignee:m.assignee || 'Unassigned', notes:m.notes || []};
+}
+function runAll(){
+  const t0 = performance.now();
+  S.events.sort((a, b) => a.ts - b.ts);
+  const eng = createEngine(); S.engine = eng; S.alerts = []; S.alertsByEvent = new Map();
+  for (const e of S.events){ const hits = eng.process(e); e.blocked = false; for (const h of hits){ const a = toAlert(e, h); S.alerts.push(a); if (h.mode === 'block') e.blocked = true; if (!S.alertsByEvent.has(e.id)) S.alertsByEvent.set(e.id, []); S.alertsByEvent.get(e.id).push(a); } }
+  S.alerts.sort((a, b) => b.ts - a.ts);
+  S.lastRunMs = performance.now() - t0;
+}
+function ingestLive(e){
+  const hits = S.engine.process(e); S.events.push(e); const out = [];
+  for (const h of hits){ const a = toAlert(e, h); S.alerts.unshift(a); out.push(a); if (h.mode === 'block') e.blocked = true; if (!S.alertsByEvent.has(e.id)) S.alertsByEvent.set(e.id, []); S.alertsByEvent.get(e.id).push(a); }
+  return out;
+}
+const eventSev = e => { const a = S.alertsByEvent.get(e.id); if (!a) return null; return a.reduce((m, x) => SEV_ORDER[x.sev] > SEV_ORDER[m] ? x.sev : m, 'low'); };
+const isActive = a => a.status === 'open' || a.status === 'investigating';
+function userRisk(uid){
+  const w = {critical:35, high:20, medium:8, low:3}; let s = 0; const since = Date.now() - 7*DAY;
+  for (const a of S.alerts) if (a.user === uid && a.ts >= since && isActive(a)) s += w[a.sev];
+  return Math.min(100, s);
+}
+
+/* ============================================================
+   Shell: navigation, drawer, modal, toasts, search
+   ============================================================ */
+const VIEWS = [
+  {id:'overview',label:'Overview',icon:'overview',group:'Monitor'},
+  {id:'activity',label:'Activity log',icon:'activity'},
+  {id:'alerts',label:'Alerts',icon:'alerts'},
+  {id:'policies',label:'Policies',icon:'policies',group:'Control'},
+  {id:'users',label:'Users',icon:'users'},
+  {id:'apps',label:'Cloud apps',icon:'apps'},
+  {id:'dlp',label:'Data protection',icon:'dlp'},
+  {id:'ingest',label:'Log ingestion',icon:'ingest',group:'Evaluate'},
+  {id:'lab',label:'Test lab',icon:'lab'},
+  {id:'reports',label:'Reports & compliance',icon:'reports'}
+];
+function renderNav(){
+  const openCrit = S.alerts.filter(a => isActive(a) && (a.sev === 'critical' || a.sev === 'high')).length;
+  $('#nav').innerHTML = VIEWS.map(v => `${v.group ? `<div class="nav-group">${v.group}</div>` : ''}<button data-view="${v.id}" ${S.view === v.id ? 'aria-current="page"' : ''}>${icon(v.icon, 18)}<span>${v.label}</span>${v.id === 'alerts' && openCrit ? `<span class="count" title="Open high and critical alerts">${openCrit}</span>` : ''}</button>`).join('');
+}
+function go(view, opts = {}){
+  if (!VIEWS.find(v => v.id === view)) view = 'overview';
+  S.view = view; S.newSince = 0; $('#newPill').classList.remove('show');
+  $('#side').classList.remove('open'); if (!$('#drawer').classList.contains('open')) $('#scrim').classList.remove('open');
+  renderNav(); render(); if (!opts.keepScroll) window.scrollTo(0, 0);
+}
+function destroyCharts(){ Object.values(S.charts).forEach(c => { try { c.destroy(); } catch(e) {} }); S.charts = {}; }
+function render(){
+  destroyCharts();
+  const fn = {overview:vOverview, activity:vActivity, alerts:vAlerts, policies:vPolicies, users:vUsers, apps:vApps, dlp:vDlp, ingest:vIngest, lab:vLab, reports:vReports}[S.view];
+  fn();
+}
+function openDrawer(html){ const d = $('#drawer'); d.innerHTML = html; d.classList.add('open'); d.setAttribute('aria-hidden', 'false'); $('#scrim').classList.add('open'); const f = d.querySelector('[data-close]'); f && f.focus(); }
+function closeDrawer(){ $('#drawer').classList.remove('open'); $('#drawer').setAttribute('aria-hidden', 'true'); $('#scrim').classList.remove('open'); $('#side').classList.remove('open'); }
+function openModal(html){ $('#modalBox').innerHTML = html; $('#modal').classList.add('open'); $('#scrim').classList.add('open'); const f = $('#modalBox').querySelector('input,select,button'); f && f.focus(); }
+function closeModal(){ $('#modal').classList.remove('open'); if (!$('#drawer').classList.contains('open')) $('#scrim').classList.remove('open'); }
+function toast(title, body, sev){
+  const t = document.createElement('div'); t.className = 'toast';
+  t.innerHTML = `${sev ? sevChip(sev) : ''}<div><b>${esc(title)}</b>${body ? `<span class="muted small">${esc(body)}</span>` : ''}</div><button class="x" aria-label="Dismiss">${icon('close', 14)}</button>`;
+  t.querySelector('.x').onclick = () => t.remove(); $('#toasts').prepend(t);
+  while ($('#toasts').children.length > 4) $('#toasts').lastChild.remove();
+  setTimeout(() => t.remove(), 5200);
+}
+$('#scrim').onclick = () => { closeDrawer(); closeModal(); };
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape'){ closeModal(); closeDrawer(); $('#results').classList.remove('open'); }
+  if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)){ e.preventDefault(); $('#q').focus(); }
+});
+$('#menuBtn').onclick = () => { $('#side').classList.add('open'); $('#scrim').classList.add('open'); };
+$('#nav').onclick = e => { const b = e.target.closest('[data-view]'); if (b) go(b.dataset.view); };
+$('#drawer').addEventListener('click', e => { if (e.target.closest('[data-close]')) closeDrawer(); });
+$('#modal').addEventListener('click', e => { if (e.target === $('#modal')) closeModal(); if (e.target.closest('[data-mclose]')) closeModal(); });
+$('#newPill').onclick = () => { S.newSince = 0; $('#newPill').classList.remove('show'); render(); };
+
+/* theme */
+function applyTheme(){ if (P.theme) document.documentElement.setAttribute('data-theme', P.theme); else document.documentElement.removeAttribute('data-theme'); }
+applyTheme();
+$('#themeBtn').onclick = () => { const dark = P.theme ? P.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; P.theme = dark ? 'light' : 'dark'; persist(); applyTheme(); render(); };
+
+/* search */
+let searchIdx = -1;
+function searchItems(q){
+  q = q.trim().toLowerCase(); if (!q) return [];
+  const out = [];
+  USERS.forEach(u => { if ((u.name + ' ' + u.email + ' ' + u.dept).toLowerCase().includes(q)) out.push({type:'User', label:u.name, sub:u.dept, run:() => openUser(u.id)}); });
+  Object.values(S.appById).forEach(a => { if (a.name.toLowerCase().includes(q)) out.push({type:'App', label:a.name, sub:a.cat, run:() => openApp(a.id)}); });
+  RULES.forEach(r => { if ((r.name + ' ' + r.id).toLowerCase().includes(q)) out.push({type:'Rule', label:r.name, sub:r.id, run:() => { go('policies'); }}); });
+  FILES.forEach(f => { if (f.name.toLowerCase().includes(q)) out.push({type:'File', label:f.name, sub:f.label, run:() => go('dlp')}); });
+  S.alerts.slice(0, 400).forEach(a => { if ((a.ruleName + ' ' + a.summary + ' ' + a.id).toLowerCase().includes(q) && out.length < 40) out.push({type:'Alert', label:a.summary, sub:SEV_LABEL[a.sev], run:() => openAlert(a.id)}); });
+  const ev = S.events.find(e => e.id.toLowerCase() === q); if (ev) out.unshift({type:'Event', label:ev.id + ' ' + ACTION_LABEL[ev.action], sub:fmtTime(ev.ts), run:() => openEvent(ev.id)});
+  return out.slice(0, 14);
+}
+function drawResults(){
+  const items = searchItems($('#q').value); const box = $('#results');
+  if (!$('#q').value.trim()){ box.classList.remove('open'); return; }
+  box.innerHTML = items.length ? items.map((it, i) => `<button role="option" data-i="${i}" class="${i === searchIdx ? 'active' : ''}"><span class="tag">${it.type}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.label)}</span><small>${esc(it.sub)}</small></button>`).join('') : `<div class="empty small">Nothing matches “${esc($('#q').value)}”. Try a user name, app, rule or event ID.</div>`;
+  box.classList.add('open'); box._items = items;
+}
+$('#q').addEventListener('input', () => { searchIdx = -1; drawResults(); });
+$('#q').addEventListener('keydown', e => {
+  const items = $('#results')._items || [];
+  if (e.key === 'ArrowDown'){ e.preventDefault(); searchIdx = Math.min(items.length - 1, searchIdx + 1); drawResults(); }
+  if (e.key === 'ArrowUp'){ e.preventDefault(); searchIdx = Math.max(0, searchIdx - 1); drawResults(); }
+  if (e.key === 'Enter' && items.length){ const it = items[Math.max(0, searchIdx)]; $('#results').classList.remove('open'); $('#q').value = ''; it.run(); }
+});
+$('#results').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (!b) return; const it = $('#results')._items[+b.dataset.i]; $('#results').classList.remove('open'); $('#q').value = ''; it.run(); });
+document.addEventListener('click', e => { if (!e.target.closest('.search')) $('#results').classList.remove('open'); });
+
+/* notifications */
+$('#bellBtn').onclick = () => {
+  const recent = S.alerts.slice(0, 8);
+  S.unseen = []; updateBell();
+  openDrawer(`<div class="drawer-h"><div class="grow"><h2>Latest alerts</h2><p class="muted small">Newest first, across all policies</p></div><button class="icon-btn" data-close aria-label="Close">${icon('close', 18)}</button></div>
+  <div class="drawer-b" style="padding:0"><div class="list">${recent.map(a => alertLi(a)).join('')}</div></div>
+  <div class="drawer-f"><button class="btn primary" id="toAlerts">Open alert queue</button></div>`);
+  $('#toAlerts').onclick = () => { closeDrawer(); go('alerts'); };
+  bindAlertLis($('#drawer'));
+};
+function updateBell(){ const n = S.unseen.length; const b = $('#bellCount'); b.hidden = !n; b.textContent = n > 99 ? '99+' : n; }
+
+/* small render helpers */
+const userCell = (uid, sub) => { const u = S.userById[uid]; if (!u) return esc(uid); return `<div class="who"><span class="avatar" style="background:${u.color}">${u.initials}</span><div style="min-width:0"><b>${esc(u.name)}</b><small>${esc(sub ?? u.dept)}</small></div></div>`; };
+const appCell = (aid, sub) => { const a = S.appById[aid] || {name:aid, color:'#667', cat:''}; return `<div class="who"><span class="appdot" style="background:${a.color}">${esc(a.name.slice(0, 2))}</span><div style="min-width:0"><b>${esc(a.name)}</b>${sub !== false ? `<small>${esc(sub ?? a.cat)}</small>` : ''}</div></div>`; };
+const statusLbl = {open:['Open','var(--crit)'], investigating:['Investigating','var(--med)'], resolved:['Resolved','var(--low)'], false_positive:['False positive','var(--faint)']};
+const statusCell = s => `<span class="status"><i style="background:${statusLbl[s][1]}"></i>${statusLbl[s][0]}</span>`;
+const appStatusTag = s => s === 'sanctioned' ? '<span class="tag ok">Sanctioned</span>' : s === 'unsanctioned' ? '<span class="tag bad">Unsanctioned</span>' : '<span class="tag warn">Under review</span>';
+function evDetail(e){
+  if (e.action === 'download' || e.action === 'upload') return `${esc(e.file ? e.file.name : '')} <span class="faint">${fmtSize(e.sizeMB)}</span>`;
+  if (e.action.startsWith('share')) return `${esc(e.file ? e.file.name : '')}${e.target ? ` <span class="faint">to ${esc(e.target)}</span>` : ''}`;
+  if (e.action === 'view' || e.action === 'delete') return esc(e.file ? e.file.name : '');
+  if (e.action === 'oauth_grant') return `${esc(e.target)} <span class="faint">${esc((e.scopes || []).join(', '))}</span>`;
+  if (e.action === 'admin_role_change') return `${esc(e.role)} <span class="faint">to ${esc(e.target)}</span>`;
+  return `<span class="faint mono">${esc(e.ip)}</span>`;
+}
+function alertLi(a){
+  const u = S.userById[a.user];
+  return `<div class="li click" data-alert="${a.id}">${sevChip(a.sev)}<div class="grow"><div class="t">${esc(a.summary)}</div><div class="d">${esc(a.ruleName)}, ${esc(u ? u.name : a.user)}, ${ago(a.ts)}</div></div>${statusCell(a.status)}</div>`;
+}
+function bindAlertLis(root){ $$('[data-alert]', root).forEach(el => el.onclick = () => openAlert(el.dataset.alert)); }
+function chartColors(){ return {crit:cssVar('--crit'), high:cssVar('--high'), med:cssVar('--med'), low:cssVar('--low'), brand:cssVar('--brand'), muted:cssVar('--muted'), faint:cssVar('--faint'), line:cssVar('--line'), text:cssVar('--text'), panel:cssVar('--panel')}; }
+function mkChart(id, cfg){
+  const cv = document.getElementById(id); if (!cv) return null;
+  if (typeof Chart === 'undefined'){ cv.parentElement.innerHTML = '<div class="chart-fallback">Chart library could not load. The data is still in the tables.</div>'; return null; }
+  const C = chartColors();
+  Chart.defaults.font.family = '"IBM Plex Sans", system-ui, sans-serif'; Chart.defaults.color = C.muted; Chart.defaults.borderColor = C.line;
+  cfg.options = Object.assign({responsive:true, maintainAspectRatio:false, animation:{duration:400}, plugins:{legend:{labels:{boxWidth:10, boxHeight:10, usePointStyle:true}}}}, cfg.options || {});
+  const ch = new Chart(cv, cfg); S.charts[id] = ch; return ch;
+}
+
+/* ============================================================
+   View: Overview
+   ============================================================ */
+function kpis(){
+  const now = Date.now(); const ev24 = S.events.filter(e => e.ts > now - DAY).length;
+  const active = S.alerts.filter(isActive); const crit = active.filter(a => a.sev === 'critical').length;
+  const risky = USERS.filter(u => userRisk(u.id) >= 40).length;
+  const apps = Object.values(S.appById); const unsanct = apps.filter(a => a.status === 'unsanctioned').length;
+  const exposed = FILES.filter(fileViolation).length;
+  return {ev24, ev7:S.events.length, active:active.length, crit, risky, apps:apps.length, unsanct, exposed};
+}
+function fileViolation(f){ return (f.label === 'Restricted' && (f.exposure === 'external' || f.exposure === 'public')) || (f.label === 'Confidential' && f.exposure === 'public'); }
+function vOverview(){
+  const k = kpis();
+  $('#view').innerHTML = `
+  <div class="page-head"><div><h1>Security overview</h1><p>Every request between Meridian Tech\u2019s people and their cloud apps passes the gate below, gets checked against ${RULES.filter(r => ruleConfig(r.id).enabled).length + P.custom.filter(c => c.enabled).length} active policies, and is logged.</p></div>
+    <div class="actions"><button class="btn" id="ovReport">${icon('reports')}Weekly report</button></div></div>
+  <section class="panel gate" aria-label="Live traffic through the CASB">
+    <div class="gate-head"><div><h2>Traffic through the gate</h2><p id="gateHint">${S.live ? 'Live feed is running. Flagged requests stop at the gate.' : 'Start the live feed to watch simulated requests get inspected in real time.'}</p></div>
+      <div class="gate-stats"><div><b id="gInspected">${fmtN(S.events.length)}</b><span>Requests inspected</span></div><div><b id="gFlagged" style="color:var(--crit)">${fmtN(new Set(S.alerts.map(a => a.eventId)).size)}</b><span>Flagged</span></div><div><b id="gLive">${fmtN(S.liveCount)}</b><span>Live this session</span></div></div></div>
+    <div id="gateSvg"></div>
+    <div class="gate-foot"><div class="legend"><span><i style="background:var(--brand)"></i>Allowed and logged</span><span><i style="background:var(--crit)"></i>Flagged by a policy</span></div><span style="margin-left:auto" id="gateCta">${S.live ? '' : `<button class="btn sm primary" id="gateStart">${icon('play', 14)}Start live feed</button>`}</span></div>
+  </section>
+  <div class="grid g-kpi" id="kpiRow">${kpiRow(k)}</div>
+  <div class="grid g-2">
+    <section class="panel"><div class="panel-h"><div><h2>Activity and alerts, last 7 days</h2><p>Events per day against alerts raised</p></div></div><div class="panel-b"><div class="chart-box"><canvas id="cTrend"></canvas></div></div></section>
+    <section class="panel"><div class="panel-h"><div><h2>Open alerts by severity</h2><p>Open and investigating</p></div></div><div class="panel-b"><div class="chart-box"><canvas id="cSev"></canvas></div></div></section>
+  </div>
+  <div class="grid g-3">
+    <section class="panel"><div class="panel-h"><h2>Needs attention</h2><div class="r"><button class="btn sm ghost" data-goto="alerts">View all</button></div></div><div class="list" id="ovAlerts" style="margin-top:8px"></div></section>
+    <section class="panel"><div class="panel-h"><h2>Riskiest users</h2><div class="r"><button class="btn sm ghost" data-goto="users">View all</button></div></div><div class="list" id="ovUsers" style="margin-top:8px"></div></section>
+    <section class="panel"><div class="panel-h"><div><h2>Activity by app</h2><p>Events in the last 7 days</p></div></div><div class="panel-b"><div class="chart-box"><canvas id="cApps"></canvas></div></div></section>
+  </div>`;
+  $('#ovReport').onclick = () => go('reports');
+  $$('[data-goto]').forEach(b => b.onclick = () => go(b.dataset.goto));
+  const gs = $('#gateStart'); if (gs) gs.onclick = () => setLive(true);
+  drawGate(); fillOverviewLists(); drawOverviewCharts();
+}
+function kpiRow(k){
+  return `<div class="panel kpi"><span class="lbl">Events, last 24 hours</span><span class="val" id="kEv">${fmtN(k.ev24)}</span><span class="sub">${fmtN(k.ev7)} in the last 7 days</span></div>
+  <div class="panel kpi"><span class="lbl">Open alerts</span><span class="val">${fmtN(k.active)}</span><span class="sub"><b style="color:var(--crit)">${k.crit} critical</b> need triage</span></div>
+  <div class="panel kpi"><span class="lbl">High-risk users</span><span class="val">${k.risky}</span><span class="sub">Risk score 40 or above, of ${USERS.length}</span></div>
+  <div class="panel kpi"><span class="lbl">Cloud apps discovered</span><span class="val">${k.apps}</span><span class="sub"><b style="color:var(--high)">${k.unsanct} unsanctioned</b> in use</span></div>
+  <div class="panel kpi"><span class="lbl">Sensitive files exposed</span><span class="val">${k.exposed}</span><span class="sub">Restricted or Confidential, shared too widely</span></div>`;
+}
+function fillOverviewLists(){
+  const a = S.alerts.filter(isActive).sort((x, y) => SEV_ORDER[y.sev] - SEV_ORDER[x.sev] || y.ts - x.ts).slice(0, 6);
+  $('#ovAlerts').innerHTML = a.length ? a.map(alertLi).join('') : '<div class="empty"><b>No open alerts</b>Every alert has been triaged.</div>'; bindAlertLis($('#ovAlerts'));
+  const us = USERS.map(u => ({u, r:userRisk(u.id)})).sort((x, y) => y.r - x.r).slice(0, 6);
+  $('#ovUsers').innerHTML = us.map(({u, r}) => `<div class="li click" data-user="${u.id}">${userCell(u.id, u.role)}<div style="margin-left:auto;display:flex;align-items:center;gap:8px;width:120px"><div class="bar" style="flex:1"><i style="width:${r}%;background:var(--${riskBand(r) === 'critical' ? 'crit' : riskBand(r) === 'medium' ? 'med' : riskBand(r)})"></i></div><b class="small" style="width:24px;text-align:right">${r}</b></div></div>`).join('');
+  $$('[data-user]', $('#ovUsers')).forEach(el => el.onclick = () => openUser(el.dataset.user));
+}
+function dayBuckets(days = 7){ const d0 = startOfDay(Date.now()) - (days - 1)*DAY; return Array.from({length:days}, (_, i) => d0 + i*DAY); }
+function drawOverviewCharts(){
+  const C = chartColors(); const days = dayBuckets();
+  const evC = days.map(d => S.events.filter(e => e.ts >= d && e.ts < d + DAY).length);
+  const alC = days.map(d => S.alerts.filter(a => a.ts >= d && a.ts < d + DAY).length);
+  mkChart('cTrend', {type:'line', data:{labels:days.map(fmtDay), datasets:[
+    {label:'Events', data:evC, borderColor:C.brand, backgroundColor:C.brand + '22', fill:true, tension:.35, yAxisID:'y', pointRadius:3},
+    {label:'Alerts', data:alC, borderColor:C.crit, backgroundColor:C.crit, tension:.35, yAxisID:'y1', pointRadius:3, borderDash:[5, 4]}]},
+    options:{interaction:{mode:'index', intersect:false}, scales:{y:{beginAtZero:true, grid:{color:C.line}, title:{display:true, text:'Events'}}, y1:{beginAtZero:true, position:'right', grid:{display:false}, title:{display:true, text:'Alerts'}}, x:{grid:{display:false}}}}});
+  const act = S.alerts.filter(isActive); const sevs = ['critical','high','medium','low'];
+  mkChart('cSev', {type:'doughnut', data:{labels:sevs.map(s => SEV_LABEL[s]), datasets:[{data:sevs.map(s => act.filter(a => a.sev === s).length), backgroundColor:[C.crit, C.high, C.med, C.low], borderColor:C.panel, borderWidth:3}]},
+    options:{cutout:'64%', plugins:{legend:{position:'right'}}}});
+  const byApp = {}; S.events.forEach(e => byApp[e.app] = (byApp[e.app] || 0) + 1);
+  const top = Object.entries(byApp).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  mkChart('cApps', {type:'bar', data:{labels:top.map(([a]) => (S.appById[a] || {name:a}).name), datasets:[{label:'Events', data:top.map(x => x[1]), backgroundColor:top.map(([a]) => (S.appById[a] || {}).status === 'unsanctioned' ? C.high : C.brand), borderRadius:5}]},
+    options:{indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{grid:{color:C.line}}, y:{grid:{display:false}}}}});
+}
+function updateOverviewLive(){
+  if (S.view !== 'overview') return;
+  $('#kpiRow').innerHTML = kpiRow(kpis());
+  $('#gInspected').textContent = fmtN(S.events.length); $('#gFlagged').textContent = fmtN(new Set(S.alerts.map(a => a.eventId)).size); $('#gLive').textContent = fmtN(S.liveCount);
+  fillOverviewLists();
+  const days = dayBuckets(); const ch = S.charts.cTrend;
+  if (ch){ ch.data.datasets[0].data = days.map(d => S.events.filter(e => e.ts >= d && e.ts < d + DAY).length); ch.data.datasets[1].data = days.map(d => S.alerts.filter(a => a.ts >= d && a.ts < d + DAY).length); ch.update('none'); }
+  const cs = S.charts.cSev; if (cs){ const act = S.alerts.filter(isActive); cs.data.datasets[0].data = ['critical','high','medium','low'].map(s => act.filter(a => a.sev === s).length); cs.update('none'); }
+}
+
+/* The gate: users → CASB → apps */
+const GATE = {W:960, H:330, users:[], apps:[]};
+function drawGate(){
+  const W = GATE.W, H = GATE.H; const cx = W/2, cy = H/2;
+  const counts = {}; S.events.forEach(e => counts[e.app] = (counts[e.app] || 0) + 1);
+  const deptCount = {}; USERS.forEach(u => deptCount[u.dept] = (deptCount[u.dept] || 0) + 1);
+  const depts = ['Engineering','Finance','Sales','HR','Marketing','Executive','Other teams'];
+  GATE.users = depts.map((d, i) => ({key:d, label:d, sub:d === 'Other teams' ? '5 more teams' : `${deptCount[d] || 0} people`, x:140, y:34 + i*(H - 68)/(depts.length - 1)}));
+  const topApps = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6).map(x => x[0]);
+  GATE.apps = [...topApps.map(a => ({key:a, label:S.appById[a].name, sub:`${fmtN(counts[a])} events`})), {key:'_other', label:'Other apps', sub:'Including shadow IT'}].map((a, i, arr) => ({...a, x:W - 140, y:34 + i*(H - 68)/(arr.length - 1)}));
+  const lane = (x1, y1, x2, y2) => `<path class="lane" d="M${x1} ${y1} C ${(x1 + x2)/2} ${y1}, ${(x1 + x2)/2} ${y2}, ${x2} ${y2}"/>`;
+  const node = (n, side) => `<g class="node" transform="translate(${n.x - (side === 'l' ? 128 : 0)} ${n.y - 18})"><rect width="128" height="36" rx="9"/><text x="10" y="15">${esc(n.label.length > 17 ? n.label.slice(0, 16) + '…' : n.label)}</text><text class="s" x="10" y="29">${esc(n.sub)}</text></g>`;
+  $('#gateSvg').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Diagram: departments on the left send requests through the CASB policy gate in the centre to cloud apps on the right">
+    ${GATE.users.map(u => lane(u.x, u.y, cx - 70, cy)).join('')}${GATE.apps.map(a => lane(cx + 70, cy, a.x, a.y)).join('')}
+    ${GATE.users.map(u => node(u, 'l')).join('')}${GATE.apps.map(a => node(a, 'r')).join('')}
+    <g id="gateDots"></g>
+    <g class="core"><rect x="${cx - 70}" y="${cy - 62}" width="140" height="124" rx="18"/>
+      <g transform="translate(${cx - 13} ${cy - 46})" fill="none" stroke="var(--brand-ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2l10 4v7c0 6-4.2 10.5-10 13C7.2 23.5 3 19 3 13V6l10-4z"/><path d="M9 13l3 3 5-5"/></g>
+      <text x="${cx}" y="${cy + 6}" text-anchor="middle" font-size="15" font-weight="600">CloudGate</text>
+      <text x="${cx}" y="${cy + 24}" text-anchor="middle" font-size="11.5" opacity=".85">Normalise · Evaluate</text>
+      <text x="${cx}" y="${cy + 40}" text-anchor="middle" font-size="11.5" opacity=".85">Log · Alert</text></g></svg>`;
+}
+function animateThroughGate(e, flagged){
+  if (S.view !== 'overview' || !$('#gateDots') || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const u = S.userById[e.user]; const from = GATE.users.find(x => x.key === u.dept) || GATE.users[GATE.users.length - 1];
+  const to = GATE.apps.find(x => x.key === e.app) || GATE.apps[GATE.apps.length - 1];
+  const cx = GATE.W/2, cy = GATE.H/2; const ns = 'http://www.w3.org/2000/svg';
+  const dot = document.createElementNS(ns, 'circle'); dot.setAttribute('r', flagged ? 6 : 4.5); dot.setAttribute('fill', flagged ? 'var(--crit)' : 'var(--brand)');
+  $('#gateDots').appendChild(dot);
+  const kf = flagged
+    ? [{transform:`translate(${from.x}px,${from.y}px)`, opacity:0}, {transform:`translate(${from.x + 20}px,${from.y}px)`, opacity:1, offset:.1}, {transform:`translate(${cx - 76}px,${cy}px)`, opacity:1, offset:.7}, {transform:`translate(${cx - 76}px,${cy}px)`, opacity:0}]
+    : [{transform:`translate(${from.x}px,${from.y}px)`, opacity:0}, {transform:`translate(${from.x + 20}px,${from.y}px)`, opacity:1, offset:.08}, {transform:`translate(${cx}px,${cy}px)`, opacity:.9, offset:.5}, {transform:`translate(${to.x - 20}px,${to.y}px)`, opacity:1, offset:.92}, {transform:`translate(${to.x}px,${to.y}px)`, opacity:0}];
+  const an = dot.animate(kf, {duration:flagged ? 1500 : 1900, easing:'ease-in-out'}); an.onfinish = () => dot.remove();
+  if (flagged){
+    setTimeout(() => { if (!$('#gateDots')) return; const r = document.createElementNS(ns, 'rect'); r.setAttribute('class', 'ripple'); r.setAttribute('x', cx - 70); r.setAttribute('y', cy - 62); r.setAttribute('width', 140); r.setAttribute('height', 124); r.setAttribute('rx', 18);
+      $('#gateDots').appendChild(r); r.animate([{opacity:1, strokeWidth:2}, {opacity:0, strokeWidth:12}], {duration:900, easing:'ease-out'}).onfinish = () => r.remove(); }, 1000);
+  }
+}
+
+/* ============================================================
+   View: Activity log
+   ============================================================ */
+function filteredEvents(){
+  const f = S.act; const q = f.q.trim().toLowerCase(); const now = Date.now();
+  const since = f.range === '24h' ? now - DAY : f.range === '1h' ? now - HOUR : 0;
+  return S.events.filter(e => {
+    if (since && e.ts < since) return false; if (f.user && e.user !== f.user) return false; if (f.app && e.app !== f.app) return false; if (f.action && e.action !== f.action) return false;
+    const sev = eventSev(e);
+    if (f.flag === 'flagged' && !sev) return false; if (f.flag === 'clean' && sev) return false; if (SEV_ORDER[f.flag] && sev !== f.flag) return false;
+    if (q){ const u = S.userById[e.user]; const hay = `${e.id} ${u.name} ${e.ip} ${e.city} ${e.file ? e.file.name : ''} ${e.target || ''} ${ACTION_LABEL[e.action]}`.toLowerCase(); if (!hay.includes(q)) return false; }
+    return true;
+  }).sort((a, b) => b.ts - a.ts);
+}
+function vActivity(){
+  const f = S.act; const PER = 25;
+  const list = filteredEvents(); const pages = Math.max(1, Math.ceil(list.length / PER)); f.page = Math.min(f.page, pages - 1);
+  const rows = list.slice(f.page*PER, f.page*PER + PER);
+  const opt = (v, l, cur) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${esc(l)}</option>`;
+  $('#view').innerHTML = `
+  <div class="page-head"><div><h1>Activity log</h1><p>Every normalised cloud event in one consistent format, whichever app it came from. Select a row to see the full record and any policy that matched.</p></div>
+    <div class="actions"><button class="btn" id="expEvCsv">${icon('download')}Export CSV</button><button class="btn" id="expEvJson">${icon('download')}Export JSON</button></div></div>
+  <section class="panel">
+    <div class="filters">
+      <input class="inp grow" id="fQ" type="search" placeholder="Search by event ID, IP, city, file or recipient" value="${esc(f.q)}" aria-label="Search events">
+      <select class="sel" id="fUser" aria-label="User">${opt('', 'All users', f.user)}${USERS.map(u => opt(u.id, u.name, f.user)).join('')}</select>
+      <select class="sel" id="fApp" aria-label="App">${opt('', 'All apps', f.app)}${Object.values(S.appById).map(a => opt(a.id, a.name, f.app)).join('')}</select>
+      <select class="sel" id="fAction" aria-label="Action">${opt('', 'All actions', f.action)}${ACTIONS.map(a => opt(a, ACTION_LABEL[a], f.action)).join('')}</select>
+      <select class="sel" id="fFlag" aria-label="Policy result">${opt('', 'Any result', f.flag)}${opt('flagged', 'Flagged only', f.flag)}${opt('clean', 'Not flagged', f.flag)}${['critical','high','medium','low'].map(s => opt(s, SEV_LABEL[s] + ' severity', f.flag)).join('')}</select>
+      <div class="seg" role="group" aria-label="Time range">${[['1h','1 hour'],['24h','24 hours'],['7d','7 days']].map(([v, l]) => `<button data-range="${v}" aria-pressed="${f.range === v}">${l}</button>`).join('')}</div>
+      ${(f.q || f.user || f.app || f.action || f.flag) ? '<button class="btn sm ghost" id="fClear">Clear filters</button>' : ''}
+    </div>
+    <div class="tbl-wrap"><table><thead><tr><th>Time</th><th>Event</th><th>User</th><th>App</th><th>Action</th><th>Details</th><th class="hide-sm">Location</th><th class="hide-sm">Device</th><th>Policy result</th></tr></thead>
+    <tbody>${rows.map(e => { const sev = eventSev(e); return `<tr class="click" data-ev="${e.id}"><td class="nowrap">${fmtTime(e.ts)}</td><td class="mono faint nowrap">${e.id}</td><td>${userCell(e.user, false === 1 ? '' : S.userById[e.user].dept)}</td><td>${appCell(e.app, false)}</td>
+      <td class="nowrap">${ACTION_LABEL[e.action]}</td><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${evDetail(e)}</td><td class="hide-sm nowrap">${esc(e.city)}, ${e.country}${e.network === 'anonymizer' ? ' <span class="tag bad">Tor</span>' : ''}</td>
+      <td class="hide-sm nowrap">${esc(e.device.type)} ${e.device.managed ? '' : '<span class="tag warn">Unmanaged</span>'}</td><td class="nowrap">${sev ? sevChip(sev) : '<span class="faint small">Allowed</span>'}${e.blocked ? ' <span class="tag bad">Blocked (sim)</span>' : ''}</td></tr>`; }).join('')}</tbody></table>
+    ${rows.length ? '' : '<div class="empty"><b>No events match these filters</b>Widen the time range or clear a filter.</div>'}</div>
+    <div class="pager"><span>${fmtN(list.length)} events${list.length ? `, showing ${f.page*PER + 1}–${Math.min(list.length, (f.page + 1)*PER)}` : ''}</span><div class="r"><button class="btn sm" id="pPrev" ${f.page ? '' : 'disabled'}>Previous</button><button class="btn sm" id="pNext" ${f.page < pages - 1 ? '' : 'disabled'}>Next</button></div></div>
+  </section>`;
+  let qt; $('#fQ').oninput = ev => { clearTimeout(qt); qt = setTimeout(() => { f.q = ev.target.value; f.page = 0; vActivity(); const i = $('#fQ'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 220); };
+  $('#fUser').onchange = ev => { f.user = ev.target.value; f.page = 0; vActivity(); };
+  $('#fApp').onchange = ev => { f.app = ev.target.value; f.page = 0; vActivity(); };
+  $('#fAction').onchange = ev => { f.action = ev.target.value; f.page = 0; vActivity(); };
+  $('#fFlag').onchange = ev => { f.flag = ev.target.value; f.page = 0; vActivity(); };
+  $$('[data-range]').forEach(b => b.onclick = () => { f.range = b.dataset.range; f.page = 0; vActivity(); });
+  const fc = $('#fClear'); if (fc) fc.onclick = () => { Object.assign(f, {q:'', user:'', app:'', action:'', flag:'', page:0}); vActivity(); };
+  $('#pPrev').onclick = () => { f.page--; vActivity(); }; $('#pNext').onclick = () => { f.page++; vActivity(); };
+  $$('[data-ev]').forEach(r => r.onclick = () => openEvent(r.dataset.ev));
+  $('#expEvCsv').onclick = () => exportFile(`cloudgate-events-${isoDate(Date.now())}.csv`, eventsCsv(list));
+  $('#expEvJson').onclick = () => exportFile(`cloudgate-events-${isoDate(Date.now())}.json`, JSON.stringify(list.map(cleanEvent), null, 2));
+}
+const cleanEvent = e => ({id:e.id, timestamp:new Date(e.ts).toISOString(), user:S.userById[e.user].email, app:(S.appById[e.app] || {name:e.app}).name, action:e.action, status:e.status, ip:e.ip, city:e.city, country:e.country, network:e.network, device:e.device, sizeMB:e.sizeMB, file:e.file, target:e.target, scopes:e.scopes, role:e.role, matchedPolicies:(S.alertsByEvent.get(e.id) || []).map(a => a.ruleId)});
+const csvCell = v => { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+function eventsCsv(list){ const h = ['id','timestamp','user','app','action','status','ip','city','country','network','device','managed','sizeMB','file','label','target','matched_policies'];
+  return [h.join(','), ...list.map(e => [e.id, new Date(e.ts).toISOString(), S.userById[e.user].email, (S.appById[e.app] || {name:e.app}).name, e.action, e.status, e.ip, e.city, e.country, e.network, e.device.type, e.device.managed, e.sizeMB != null ? e.sizeMB.toFixed(2) : '', e.file ? e.file.name : '', e.file ? e.file.label : '', e.target || '', (S.alertsByEvent.get(e.id) || []).map(a => a.ruleId).join(' ')].map(csvCell).join(','))].join('\n'); }
+function alertsCsv(list){ const h = ['alert_id','timestamp','severity','status','rule_id','rule','category','user','app','summary','assignee','mitre'];
+  return [h.join(','), ...list.map(a => [a.id, new Date(a.ts).toISOString(), a.sev, a.status, a.ruleId, a.ruleName, a.cat, S.userById[a.user].email, (S.appById[a.app] || {name:a.app}).name, a.summary, a.assignee, a.mitre].map(csvCell).join(','))].join('\n'); }
+let dlCap;
+async function exportFile(name, data){
+  try {
+    if (dlCap === undefined) dlCap = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+    if (dlCap){ await dlCap.save({filename:name, data}); toast('Export ready', name); audit('Exported data', name); return; }
+  } catch(err){ if (err && err.code === 'declined') return; if (err && err.code === 'rate_limited'){ toast('A save prompt is already open', 'Finish that one first.'); return; } }
+  try { const b = new Blob([data], {type:'text/plain'}); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; document.body.appendChild(a); a.click(); a.remove(); audit('Exported data', name); toast('Export started', name); }
+  catch(e){ toast('Export is not available here', 'Open the prototype in claude.ai to save files.'); }
+}
+
+function openEvent(id){
+  const e = S.events.find(x => x.id === id); if (!e) return; const al = S.alertsByEvent.get(e.id) || []; const u = S.userById[e.user];
+  openDrawer(`<div class="drawer-h"><div class="grow"><div class="rid">${e.id}</div><h2>${ACTION_LABEL[e.action]} on ${esc((S.appById[e.app] || {name:e.app}).name)}</h2><p class="muted small">${fmtFull(e.ts)}</p></div><button class="icon-btn" data-close aria-label="Close">${icon('close', 18)}</button></div>
+  <div class="drawer-b">
+    <div class="sec"><h3>Policy result</h3>${al.length ? `<div class="list" style="border:1px solid var(--line);border-radius:10px">${al.map(alertLi).join('')}</div>` : '<div class="callout">No policy matched. The request was <b>allowed and logged</b>.</div>'}</div>
+    <div class="sec"><h3>Normalised record</h3><dl class="kv"><dt>User</dt><dd>${esc(u.name)} <span class="faint">${esc(u.email)}</span></dd><dt>Department</dt><dd>${esc(u.dept)}</dd><dt>App</dt><dd>${esc((S.appById[e.app] || {name:e.app}).name)} ${appStatusTag((S.appById[e.app] || {}).status)}</dd>
+      <dt>Action</dt><dd>${ACTION_LABEL[e.action]} <span class="faint mono">${e.action}</span></dd><dt>Outcome</dt><dd>${e.status === 'failure' ? 'Failed' : 'Succeeded'}${e.blocked ? ', blocked by policy (simulated)' : ''}</dd>
+      ${e.file ? `<dt>File</dt><dd>${esc(e.file.name)} <span class="tag ${LABEL_TAG[e.file.label]}">${e.file.label}</span></dd>` : ''}${e.sizeMB != null ? `<dt>Size</dt><dd>${fmtSize(e.sizeMB)}</dd>` : ''}
+      ${e.target ? `<dt>Target</dt><dd>${esc(e.target)}</dd>` : ''}${e.scopes ? `<dt>Scopes</dt><dd class="mono">${esc(e.scopes.join(', '))}</dd>` : ''}${e.role ? `<dt>Role</dt><dd>${esc(e.role)}</dd>` : ''}
+      <dt>Location</dt><dd>${esc(e.city)}, ${COUNTRY[e.country] || e.country}</dd><dt>IP address</dt><dd class="mono">${esc(e.ip)}</dd><dt>Network</dt><dd>${e.network === 'anonymizer' ? 'Tor / anonymiser' : e.network === 'corporate' ? 'Corporate network' : 'Home or public'}</dd>
+      <dt>Device</dt><dd>${esc(e.device.type)}, ${esc(e.device.os)}, ${e.device.managed ? 'managed' : 'unmanaged'}</dd><dt>Source</dt><dd>${e.src === 'live' ? 'Live simulation' : e.src === 'import' ? 'Imported log file' : 'Demo dataset'}</dd></dl></div>
+    <div class="sec"><h3>Raw JSON</h3><pre class="json">${esc(JSON.stringify(cleanEvent(e), null, 2))}</pre></div>
+  </div>`);
+  bindAlertLis($('#drawer'));
+}
+
+/* ============================================================
+   View: Alerts
+   ============================================================ */
+function filteredAlerts(){
+  const f = S.al; const q = f.q.trim().toLowerCase();
+  return S.alerts.filter(a => {
+    if (f.sev && a.sev !== f.sev) return false;
+    if (f.status === 'active' && !isActive(a)) return false; if (f.status && f.status !== 'active' && f.status !== 'all' && a.status !== f.status) return false;
+    if (f.cat && a.cat !== f.cat) return false; if (f.user && a.user !== f.user) return false;
+    if (q && !(`${a.summary} ${a.ruleName} ${a.id} ${S.userById[a.user].name}`.toLowerCase().includes(q))) return false; return true;
+  }).sort((x, y) => y.ts - x.ts);
+}
+function vAlerts(){
+  const f = S.al; const PER = 20; const list = filteredAlerts(); const pages = Math.max(1, Math.ceil(list.length / PER)); f.page = Math.min(f.page, pages - 1);
+  const rows = list.slice(f.page*PER, (f.page + 1)*PER);
+  const act = S.alerts.filter(isActive); const opt = (v, l, cur) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${esc(l)}</option>`;
+  $('#view').innerHTML = `
+  <div class="page-head"><div><h1>Alert queue</h1><p>Each alert says what happened, which rule fired and why, and what to do next. Move alerts through triage and keep notes as you go.</p></div>
+    <div class="actions"><button class="btn" id="expAl">${icon('download')}Export CSV</button></div></div>
+  <div class="grid g-kpi" style="grid-template-columns:repeat(4,minmax(0,1fr))">${['critical','high','medium','low'].map(s => `<button class="panel kpi" data-sevf="${s}" style="text-align:left;cursor:pointer;${f.sev === s ? 'outline:2px solid var(--' + (s === 'critical' ? 'crit' : s === 'medium' ? 'med' : s) + ')' : ''}"><span class="lbl">${sevChip(s)}</span><span class="val">${act.filter(a => a.sev === s).length}</span><span class="sub">open or investigating</span></button>`).join('')}</div>
+  <section class="panel">
+    <div class="filters">
+      <input class="inp grow" id="aQ" type="search" placeholder="Search alerts" value="${esc(f.q)}" aria-label="Search alerts">
+      <select class="sel" id="aStatus" aria-label="Status">${opt('active', 'Open and investigating', f.status)}${opt('all', 'All statuses', f.status)}${opt('open', 'Open', f.status)}${opt('investigating', 'Investigating', f.status)}${opt('resolved', 'Resolved', f.status)}${opt('false_positive', 'False positive', f.status)}</select>
+      <select class="sel" id="aSev" aria-label="Severity">${opt('', 'All severities', f.sev)}${['critical','high','medium','low'].map(s => opt(s, SEV_LABEL[s], f.sev)).join('')}</select>
+      <select class="sel" id="aCat" aria-label="Category">${opt('', 'All categories', f.cat)}${CATS.map(c => opt(c, c, f.cat)).join('')}</select>
+      <select class="sel" id="aUser" aria-label="User">${opt('', 'All users', f.user)}${USERS.map(u => opt(u.id, u.name, f.user)).join('')}</select>
+    </div>
+    <div class="filters" id="bulk" style="${f.sel.size ? '' : 'display:none'};background:var(--brand-soft)"><b>${f.sel.size} selected</b><button class="btn sm" data-bulk="investigating">Mark investigating</button><button class="btn sm" data-bulk="resolved">Resolve</button><button class="btn sm" data-bulk="false_positive">Mark false positive</button><button class="btn sm ghost" id="bulkClear">Clear selection</button></div>
+    <div class="tbl-wrap"><table><thead><tr><th style="width:34px"><input type="checkbox" id="selAll" aria-label="Select all on this page"></th><th>Severity</th><th>Alert</th><th>User</th><th class="hide-sm">App</th><th class="hide-sm">Technique</th><th>Status</th><th class="hide-sm">Owner</th><th>Raised</th></tr></thead>
+    <tbody>${rows.map(a => `<tr class="click" data-al="${a.id}"><td><input type="checkbox" data-sel="${a.id}" ${f.sel.has(a.id) ? 'checked' : ''} aria-label="Select alert"></td><td>${sevChip(a.sev)}</td>
+      <td style="max-width:360px"><div style="font-weight:500">${esc(a.summary)}</div><div class="faint small"><span class="rid">${a.ruleId}</span> ${esc(a.ruleName)}${a.mode === 'block' ? ' <span class="tag bad">Blocked (sim)</span>' : ''}</div></td>
+      <td>${userCell(a.user)}</td><td class="hide-sm">${appCell(a.app, false)}</td><td class="hide-sm small muted">${esc(a.mitre)}</td><td class="nowrap">${statusCell(a.status)}</td><td class="hide-sm small">${esc(a.assignee)}</td><td class="nowrap small">${ago(a.ts)}</td></tr>`).join('')}</tbody></table>
+    ${rows.length ? '' : '<div class="empty"><b>No alerts match</b>Change the status filter to include resolved alerts, or clear the search.</div>'}</div>
+    <div class="pager"><span>${fmtN(list.length)} alerts</span><div class="r"><button class="btn sm" id="pPrev" ${f.page ? '' : 'disabled'}>Previous</button><button class="btn sm" id="pNext" ${f.page < pages - 1 ? '' : 'disabled'}>Next</button></div></div>
+  </section>`;
+  let qt; $('#aQ').oninput = ev => { clearTimeout(qt); qt = setTimeout(() => { f.q = ev.target.value; f.page = 0; vAlerts(); const i = $('#aQ'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 220); };
+  $('#aStatus').onchange = e => { f.status = e.target.value; f.page = 0; vAlerts(); };
+  $('#aSev').onchange = e => { f.sev = e.target.value; f.page = 0; vAlerts(); };
+  $('#aCat').onchange = e => { f.cat = e.target.value; f.page = 0; vAlerts(); };
+  $('#aUser').onchange = e => { f.user = e.target.value; f.page = 0; vAlerts(); };
+  $$('[data-sevf]').forEach(b => b.onclick = () => { f.sev = f.sev === b.dataset.sevf ? '' : b.dataset.sevf; f.page = 0; vAlerts(); });
+  $('#pPrev').onclick = () => { f.page--; vAlerts(); }; $('#pNext').onclick = () => { f.page++; vAlerts(); };
+  $$('[data-al]').forEach(r => r.onclick = e => { if (e.target.closest('input')) return; openAlert(r.dataset.al); });
+  $$('[data-sel]').forEach(c => c.onchange = () => { c.checked ? f.sel.add(c.dataset.sel) : f.sel.delete(c.dataset.sel); vAlerts(); });
+  $('#selAll').checked = rows.length && rows.every(a => f.sel.has(a.id));
+  $('#selAll').onchange = e => { rows.forEach(a => e.target.checked ? f.sel.add(a.id) : f.sel.delete(a.id)); vAlerts(); };
+  $$('[data-bulk]').forEach(b => b.onclick = () => { const st = b.dataset.bulk; [...f.sel].forEach(id => setAlertStatus(id, st, true)); audit('Bulk status change', `${f.sel.size} alerts set to ${statusLbl[st][0]}`); toast(`${f.sel.size} alerts updated`, `Status: ${statusLbl[st][0]}`); f.sel.clear(); renderNav(); vAlerts(); });
+  const bc = $('#bulkClear'); if (bc) bc.onclick = () => { f.sel.clear(); vAlerts(); };
+  $('#expAl').onclick = () => exportFile(`cloudgate-alerts-${isoDate(Date.now())}.csv`, alertsCsv(list));
+}
+function metaOf(id){ return P.alertMeta[id] || (P.alertMeta[id] = {}); }
+function setAlertStatus(id, st, silent){ const a = S.alerts.find(x => x.id === id); if (!a) return; a.status = st; metaOf(id).status = st; persist(); if (!silent) audit('Alert status changed', `${id} to ${statusLbl[st][0]}`); }
+function openAlert(id){
+  const a = S.alerts.find(x => x.id === id); if (!a) return; const e = S.events.find(x => x.id === a.eventId); const u = S.userById[a.user]; const app = S.appById[a.app] || {name:a.app};
+  const rel = [...new Set([...a.related, a.eventId])].map(i => S.events.find(x => x.id === i)).filter(Boolean).sort((x, y) => x.ts - y.ts);
+  const userOther = S.alerts.filter(x => x.user === a.user && x.id !== a.id).slice(0, 4);
+  openDrawer(`<div class="drawer-h"><div class="grow"><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">${sevChip(a.sev)}<span class="rid">${esc(a.id)}</span></div><h2>${esc(a.summary)}</h2><p class="muted small">${fmtFull(a.ts)}, ${esc(u.name)} on ${esc(app.name)}</p></div><button class="icon-btn" data-close aria-label="Close">${icon('close', 18)}</button></div>
+  <div class="drawer-b">
+    <div class="callout"><b>Triggered by ${esc(a.ruleId)} ${esc(a.ruleName)}.</b> ${esc((RULE_BY_ID[a.ruleId] || {desc:'Custom rule built in the policy editor.'}).desc)}</div>
+    <div class="sec"><h3>Why this was flagged</h3><div class="why"><table><thead><tr><th>Condition checked</th><th>Observed</th><th>Expected</th><th></th></tr></thead><tbody>${a.evidence.map(([l, o, x]) => `<tr><td>${esc(l)}</td><td><b>${esc(o)}</b></td><td class="muted">${esc(x)}</td><td>${x !== '—' ? '<span class="check" title="Condition met">✕</span>' : ''}</td></tr>`).join('')}</tbody></table></div>
+      <p class="faint small" style="margin-top:6px">ATT&amp;CK technique: ${esc(a.mitre)}. Detection is rule-based, not a machine-learning score.</p></div>
+    <div class="sec"><h3>Recommended response</h3><ol class="steps">${a.rec.map(r => `<li>${esc(r)}</li>`).join('')}</ol>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" data-act="Revoked all sessions">Revoke sessions</button><button class="btn sm" data-act="Required MFA re-authentication">Require MFA</button><button class="btn sm" data-act="Suspended user account">Suspend user</button>${e && e.file && e.action === 'share_public' ? '<button class="btn sm" data-act="Revoked public link">Revoke public link</button>' : ''}</div>
+      <p class="faint small" style="margin-top:6px">Response actions are simulated in demo mode and recorded in the audit trail.</p></div>
+    <div class="sec"><h3>Event timeline</h3><div class="timeline">${rel.map(x => `<div class="${x.id === a.eventId ? 'hit' : ''}"><b>${ACTION_LABEL[x.action]}</b> ${x.file ? esc(x.file.name) : ''} <span class="faint">${esc(x.city)}, ${esc(x.ip)}</span><small>${fmtFull(x.ts)} <a href="#" data-ev="${x.id}">${x.id}</a></small></div>`).join('')}</div></div>
+    ${userOther.length ? `<div class="sec"><h3>Other alerts for ${esc(u.name.split(' ')[0])}</h3><div class="list" style="border:1px solid var(--line);border-radius:10px">${userOther.map(alertLi).join('')}</div></div>` : ''}
+    <div class="sec"><h3>Triage</h3><div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div class="field"><label for="aSt">Status</label><select class="sel" id="aSt">${Object.entries(statusLbl).map(([k, [l]]) => `<option value="${k}" ${a.status === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      <div class="field"><label for="aAs">Owner</label><select class="sel" id="aAs">${SOC_TEAM.map(t => `<option ${a.assignee === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div>
+      <div class="field" style="margin-top:10px"><label for="aNote">Add a note</label><textarea class="inp" id="aNote" rows="2" placeholder="What did you check? What did you find?"></textarea></div>
+      <div style="margin-top:8px"><button class="btn sm primary" id="aNoteBtn">Add note</button></div>
+      <div id="aNotes" style="display:grid;gap:8px;margin-top:10px">${a.notes.map(n => `<div class="note"><small>${fmtFull(n.ts)}</small>${esc(n.text)}</div>`).join('')}</div></div>
+  </div>`);
+  const dr = $('#drawer');
+  $('#aSt', dr).onchange = ev => { setAlertStatus(a.id, ev.target.value); toast('Alert updated', `Status: ${statusLbl[ev.target.value][0]}`); renderNav(); if (S.view !== 'overview') render(); else updateOverviewLive(); };
+  $('#aAs', dr).onchange = ev => { a.assignee = ev.target.value; metaOf(a.id).assignee = a.assignee; persist(); audit('Alert assigned', `${a.id} to ${a.assignee}`); toast('Owner updated', a.assignee); if (S.view === 'alerts') vAlerts(); };
+  $('#aNoteBtn', dr).onclick = () => { const t = $('#aNote', dr).value.trim(); if (!t) return; const n = {ts:Date.now(), text:t}; a.notes.unshift(n); metaOf(a.id).notes = a.notes; persist(); audit('Note added', a.id); $('#aNote', dr).value = ''; $('#aNotes', dr).insertAdjacentHTML('afterbegin', `<div class="note"><small>${fmtFull(n.ts)}</small>${esc(t)}</div>`); };
+  $$('[data-act]', dr).forEach(b => b.onclick = () => { audit(b.dataset.act + ' (simulated)', `${u.name}, alert ${a.id}`); toast(b.dataset.act, 'Simulated in demo mode, logged to the audit trail'); if (b.dataset.act === 'Revoked public link'){ const f = FILES.find(x => x.name === e.file.name); if (f){ f.exposure = 'internal'; P.fileExposure[f.id] = 'internal'; persist(); } } if (a.status === 'open'){ setAlertStatus(a.id, 'investigating', true); $('#aSt', dr).value = 'investigating'; renderNav(); } });
+  $$('[data-ev]', dr).forEach(l => l.onclick = ev => { ev.preventDefault(); openEvent(l.dataset.ev); });
+  bindAlertLis(dr);
+}
+
+/* ============================================================
+   View: Policies
+   ============================================================ */
+function hitCounts(){ const m = {}; S.alerts.forEach(a => m[a.ruleId] = (m[a.ruleId] || 0) + 1); return m; }
+function vPolicies(){
+  const hits = hitCounts();
+  const enabled = RULES.filter(r => ruleConfig(r.id).enabled).length + P.custom.filter(c => c.enabled).length;
+  const ruleRow = r => { const c = ruleConfig(r.id); const pk = Object.keys(r.params);
+    return `<div class="rule ${c.enabled ? '' : 'off'}" data-rule="${r.id}">
+      <label class="switch" title="${c.enabled ? 'Turn off' : 'Turn on'}"><input type="checkbox" data-toggle="${r.id}" ${c.enabled ? 'checked' : ''} aria-label="Enable ${esc(r.name)}"><span></span></label>
+      <div><div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><span class="rid">${r.id}</span><b>${esc(r.name)}</b></div><p class="muted small" style="margin-top:3px">${esc(r.desc)}</p>
+        <div class="meta"><span class="tag">${esc(r.mitre)}</span><span class="tag ${hits[r.id] ? 'brand' : ''}">${hits[r.id] || 0} alerts in dataset</span></div>
+        ${pk.length ? `<div class="params">${pk.map(k => `<div class="field"><label for="p-${r.id}-${k}">${esc(r.labels[k])}</label><input class="inp ${typeof r.params[k] === 'string' ? 'wide' : ''}" id="p-${r.id}-${k}" data-param="${r.id}:${k}" type="${typeof r.params[k] === 'number' ? 'number' : 'text'}" value="${esc(c.params[k])}"></div>`).join('')}</div>` : ''}</div>
+      <div class="ctl"><select class="sel" data-sev="${r.id}" aria-label="Severity">${['critical','high','medium','low'].map(s => `<option value="${s}" ${c.sev === s ? 'selected' : ''}>${SEV_LABEL[s]}</option>`).join('')}</select>
+        <select class="sel" data-mode="${r.id}" aria-label="Action">${[['monitor','Monitor and alert'],['block','Block (simulated)']].map(([v, l]) => `<option value="${v}" ${c.mode === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>`; };
+  const customRow = cr => `<div class="rule ${cr.enabled ? '' : 'off'}"><label class="switch"><input type="checkbox" data-ctoggle="${cr.id}" ${cr.enabled ? 'checked' : ''} aria-label="Enable ${esc(cr.name)}"><span></span></label>
+    <div><div style="display:flex;gap:8px;align-items:baseline"><span class="rid">${cr.id}</span><b>${esc(cr.name)}</b></div><p class="muted small" style="margin-top:3px">Fires when ${cr.conds.map(c => `${FIELD_LABEL[c.field].toLowerCase()} ${OPS[c.op]} <b>${esc(c.value)}</b>`).join(' and ')}.</p>
+      <div class="meta">${sevChip(cr.sev)}<span class="tag ${hits[cr.id] ? 'brand' : ''}">${hits[cr.id] || 0} alerts in dataset</span></div></div>
+    <div class="ctl"><button class="btn sm" data-cedit="${cr.id}">Edit</button><button class="btn sm danger" data-cdel="${cr.id}">Delete</button></div></div>`;
+  $('#view').innerHTML = `
+  <div class="page-head"><div><h1>Policy engine</h1><p>${enabled} rules active. Change a threshold or severity and the whole dataset is re-evaluated straight away, so you can see the effect on alert volume before you commit to it.</p></div>
+    <div class="actions"><button class="btn" id="resetPol">${icon('refresh')}Reset to defaults</button><button class="btn primary" id="newRule">${icon('plus')}New custom rule</button></div></div>
+  <div class="callout">Last full evaluation: <b>${fmtN(S.events.length)} events in ${S.lastRunMs.toFixed(1)} ms</b>, producing ${fmtN(S.alerts.length)} alerts. “Block (simulated)” marks matching events as blocked in the log but never touches a real service.</div>
+  ${CATS.slice(0, 3).map(cat => `<section class="panel"><div class="panel-h" style="padding-bottom:12px;border-bottom:1px solid var(--line)"><h2>${cat}</h2><p style="margin-left:auto">${RULES.filter(r => r.cat === cat && ruleConfig(r.id).enabled).length} of ${RULES.filter(r => r.cat === cat).length} on</p></div>${RULES.filter(r => r.cat === cat).map(ruleRow).join('')}</section>`).join('')}
+  <section class="panel"><div class="panel-h" style="padding-bottom:12px;border-bottom:1px solid var(--line)"><h2>Custom rules</h2><p style="margin-left:auto">Built with the rule builder</p></div>
+    ${P.custom.length ? P.custom.map(customRow).join('') : '<div class="empty"><b>No custom rules yet</b>Combine conditions on any event field, for example uploads over 200 MB to file-transfer apps.<div style="margin-top:12px"><button class="btn primary" id="newRule2">Create a custom rule</button></div></div>'}</section>`;
+  const reval = (msg) => { const before = S.alerts.length; runAll(); renderNav(); const d = S.alerts.length - before; toast(msg, `Re-evaluated ${fmtN(S.events.length)} events: ${fmtN(S.alerts.length)} alerts (${d >= 0 ? '+' : ''}${d})`); persist(); vPolicies(); };
+  const ro = id => P.rules[id] || (P.rules[id] = {});
+  $$('[data-toggle]').forEach(c => c.onchange = () => { ro(c.dataset.toggle).enabled = c.checked; audit(c.checked ? 'Rule enabled' : 'Rule disabled', c.dataset.toggle); reval(`${c.dataset.toggle} ${c.checked ? 'enabled' : 'disabled'}`); });
+  $$('[data-sev]').forEach(s => s.onchange = () => { ro(s.dataset.sev).sev = s.value; audit('Rule severity changed', `${s.dataset.sev} to ${s.value}`); reval('Severity updated'); });
+  $$('[data-mode]').forEach(s => s.onchange = () => { ro(s.dataset.mode).mode = s.value; audit('Rule action changed', `${s.dataset.mode} to ${s.value}`); reval('Rule action updated'); });
+  $$('[data-param]').forEach(i => i.onchange = () => { const [id, k] = i.dataset.param.split(':'); const r = RULE_BY_ID[id]; let v = typeof r.params[k] === 'number' ? Number(i.value) : i.value;
+    if (typeof v === 'number' && (!isFinite(v) || v < 0)){ toast('Enter a positive number', r.labels[k]); i.value = ruleConfig(id).params[k]; return; }
+    const o = ro(id); o.params = Object.assign({}, o.params, {[k]:v}); audit('Rule tuned', `${id} ${k} = ${v}`); reval(`${id} threshold updated`); });
+  $('#resetPol').onclick = () => { P.rules = {}; audit('Policies reset', 'All built-in rules restored to defaults'); reval('Policies reset to defaults'); };
+  $('#newRule').onclick = () => ruleBuilder(); const n2 = $('#newRule2'); if (n2) n2.onclick = () => ruleBuilder();
+  $$('[data-ctoggle]').forEach(c => c.onchange = () => { const cr = P.custom.find(x => x.id === c.dataset.ctoggle); cr.enabled = c.checked; audit('Custom rule toggled', cr.id); reval('Custom rule updated'); });
+  $$('[data-cedit]').forEach(b => b.onclick = () => ruleBuilder(P.custom.find(x => x.id === b.dataset.cedit)));
+  $$('[data-cdel]').forEach(b => b.onclick = () => { P.custom = P.custom.filter(x => x.id !== b.dataset.cdel); audit('Custom rule deleted', b.dataset.cdel); reval('Custom rule deleted'); });
+}
+function ruleBuilder(existing){
+  const draft = existing ? JSON.parse(JSON.stringify(existing)) : {id:'CU-' + String(P.custom.length + 1).padStart(2, '0'), name:'Large upload to a file-transfer app', sev:'high', mode:'monitor', enabled:true, cooldownMin:30, rec:'Check what was uploaded and whether an approved app should have been used', conds:[{field:'action', op:'eq', value:'upload'}, {field:'sizeMB', op:'gt', value:'200'}]};
+  const draw = () => {
+    openModal(`<div class="box-h"><div style="flex:1"><h2>${existing ? 'Edit' : 'New'} custom rule</h2><p class="muted small">All conditions must match for the rule to fire.</p></div><button class="icon-btn" data-mclose aria-label="Close">${icon('close', 18)}</button></div>
+    <div class="box-b">
+      <div class="field"><label for="rbName">Rule name</label><input class="inp" id="rbName" value="${esc(draft.name)}"></div>
+      <div class="field"><label>Conditions</label><div style="display:grid;gap:8px" id="rbConds">${draft.conds.map((c, i) => `<div class="cond">
+        <select class="sel" data-cf="${i}" aria-label="Field">${Object.entries(FIELD_LABEL).map(([k, l]) => `<option value="${k}" ${c.field === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        <select class="sel" data-co="${i}" aria-label="Operator">${Object.entries(OPS).map(([k, l]) => `<option value="${k}" ${c.op === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+        <input class="inp" data-cv="${i}" value="${esc(c.value)}" aria-label="Value" placeholder="${c.field === 'action' ? 'upload' : c.field === 'app' ? 'dropzap' : 'value'}">
+        <button class="icon-btn" data-cx="${i}" aria-label="Remove condition" ${draft.conds.length < 2 ? 'disabled' : ''}>${icon('close', 14)}</button></div>`).join('')}</div>
+        <div><button class="btn sm ghost" id="rbAdd">${icon('plus', 14)}Add condition</button></div>
+        <p class="faint small">Values for app and action use their IDs, for example <span class="mono">dropzap</span> or <span class="mono">share_external</span>. “Is one of” takes a comma-separated list.</p></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div class="field"><label for="rbSev">Severity</label><select class="sel" id="rbSev">${['critical','high','medium','low'].map(s => `<option value="${s}" ${draft.sev === s ? 'selected' : ''}>${SEV_LABEL[s]}</option>`).join('')}</select></div>
+        <div class="field"><label for="rbMode">Action</label><select class="sel" id="rbMode"><option value="monitor" ${draft.mode === 'monitor' ? 'selected' : ''}>Monitor and alert</option><option value="block" ${draft.mode === 'block' ? 'selected' : ''}>Block (simulated)</option></select></div>
+        <div class="field"><label for="rbCool">Repeat alerts after (min)</label><input class="inp" id="rbCool" type="number" min="0" value="${draft.cooldownMin}" style="width:120px"></div></div>
+      <div class="field"><label for="rbRec">Recommended response</label><input class="inp" id="rbRec" value="${esc(draft.rec)}"></div>
+      <div class="callout" id="rbPreview">Preview: checking against the dataset…</div>
+    </div>
+    <div class="box-f"><button class="btn" data-mclose>Cancel</button><button class="btn primary" id="rbSave">${existing ? 'Save rule' : 'Create rule'}</button></div>`);
+    const box = $('#modalBox');
+    const sync = () => { draft.name = $('#rbName', box).value; draft.sev = $('#rbSev', box).value; draft.mode = $('#rbMode', box).value; draft.cooldownMin = +$('#rbCool', box).value || 0; draft.rec = $('#rbRec', box).value;
+      draft.conds.forEach((c, i) => { c.field = $(`[data-cf="${i}"]`, box).value; c.op = $(`[data-co="${i}"]`, box).value; c.value = $(`[data-cv="${i}"]`, box).value; }); preview(); };
+    const preview = () => { let n = 0; const u = new Set(); for (const e of S.events){ const c = {user:S.userById[e.user], app:S.appById[e.app] || {status:'review'}}; try { if (draft.conds.every(cd => evalCond(cd, e, c))){ n++; u.add(e.user); } } catch(x) {} }
+      $('#rbPreview', box).innerHTML = `Preview: <b>${n} ${n === 1 ? 'event' : 'events'}</b> in the current dataset match, from ${u.size} users. Repeat suppression may reduce the alert count.`; };
+    $$('input,select', box).forEach(x => x.addEventListener('input', sync));
+    $('#rbAdd', box).onclick = () => { sync(); draft.conds.push({field:'app', op:'eq', value:''}); draw(); };
+    $$('[data-cx]', box).forEach(b => b.onclick = () => { sync(); draft.conds.splice(+b.dataset.cx, 1); draw(); });
+    $('#rbSave', box).onclick = () => { sync(); if (!draft.name.trim()){ toast('Give the rule a name'); return; } if (draft.conds.some(c => String(c.value).trim() === '')){ toast('Every condition needs a value'); return; }
+      if (existing){ P.custom = P.custom.map(x => x.id === draft.id ? draft : x); } else P.custom.push(draft);
+      audit(existing ? 'Custom rule edited' : 'Custom rule created', `${draft.id} ${draft.name}`); closeModal(); const before = S.alerts.length; runAll(); renderNav(); persist(); toast(existing ? 'Rule saved' : 'Rule created', `${S.alerts.length - before >= 0 ? '+' : ''}${S.alerts.length - before} alerts after re-evaluation`); if (S.view === 'policies') vPolicies(); };
+    preview();
+  };
+  draw();
+}
+
+/* ============================================================
+   View: Users
+   ============================================================ */
+function vUsers(){
+  const rows = USERS.map(u => { const evs = S.events.filter(e => e.user === u.id); const al = S.alerts.filter(a => a.user === u.id); const last = evs[evs.length - 1];
+    return {u, risk:userRisk(u.id), events:evs.length, open:al.filter(isActive).length, last, countries:[...new Set(evs.map(e => e.country))], unmanaged:evs.some(e => !e.device.managed)}; }).sort((a, b) => b.risk - a.risk);
+  $('#view').innerHTML = `
+  <div class="page-head"><div><h1>Users and risk</h1><p>Risk scores add up a user\u2019s open alerts from the last 7 days: critical 35, high 20, medium 8, low 3, capped at 100. Resolving an alert lowers the score.</p></div></div>
+  <section class="panel"><div class="tbl-wrap"><table><thead><tr><th>User</th><th>Role</th><th style="width:170px">Risk score</th><th class="num">Open alerts</th><th class="num hide-sm">Events, 7 days</th><th class="hide-sm">Seen from</th><th class="hide-sm">Last activity</th></tr></thead>
+  <tbody>${rows.map(r => { const b = riskBand(r.risk); const col = b === 'critical' ? 'crit' : b === 'medium' ? 'med' : b; return `<tr class="click" data-u="${r.u.id}"><td>${userCell(r.u.id, r.u.email)}</td><td><div>${esc(r.u.role)}</div><div class="faint small">${esc(r.u.dept)}${r.u.admin ? ', administrator' : ''}</div></td>
+    <td><div style="display:flex;gap:8px;align-items:center"><div class="bar" style="flex:1"><i style="width:${r.risk}%;background:var(--${col})"></i></div><b style="width:26px;text-align:right">${r.risk}</b></div></td>
+    <td class="num">${r.open ? `<b style="color:var(--crit)">${r.open}</b>` : '0'}</td><td class="num hide-sm">${r.events}</td><td class="hide-sm">${r.countries.map(c => `<span class="tag ${r.u.home.includes(c) ? '' : 'warn'}">${c}</span>`).join(' ')}</td><td class="hide-sm small">${r.last ? ago(r.last.ts) : '—'}</td></tr>`; }).join('')}</tbody></table></div></section>`;
+  $$('[data-u]').forEach(r => r.onclick = () => openUser(r.dataset.u));
+}
+function openUser(uid){
+  const u = S.userById[uid]; const evs = S.events.filter(e => e.user === uid).sort((a, b) => b.ts - a.ts); const al = S.alerts.filter(a => a.user === uid); const risk = userRisk(uid);
+  const byApp = {}; evs.forEach(e => byApp[e.app] = (byApp[e.app] || 0) + 1);
+  const dl = evs.filter(e => e.action === 'download').reduce((s, e) => s + (e.sizeMB || 0), 0);
+  openDrawer(`<div class="drawer-h"><span class="avatar" style="background:${u.color};width:44px;height:44px;font-size:15px">${u.initials}</span><div class="grow"><h2>${esc(u.name)}</h2><p class="muted small">${esc(u.role)}, ${esc(u.dept)}<br>${esc(u.email)}</p></div><button class="icon-btn" data-close aria-label="Close">${icon('close', 18)}</button></div>
+  <div class="drawer-b">
+    <div class="grid g-3" style="gap:10px"><div class="panel kpi" style="box-shadow:none"><span class="lbl">Risk score</span><span class="val" style="color:var(--${riskBand(risk) === 'critical' ? 'crit' : riskBand(risk) === 'medium' ? 'med' : riskBand(risk)})">${risk}</span></div><div class="panel kpi" style="box-shadow:none"><span class="lbl">Open alerts</span><span class="val">${al.filter(isActive).length}</span></div><div class="panel kpi" style="box-shadow:none"><span class="lbl">Downloaded</span><span class="val" style="font-size:22px">${fmtSize(dl)}</span></div></div>
+    <div class="sec"><h3>Behaviour baseline</h3><dl class="kv"><dt>Usual location</dt><dd>${esc(u.city)}; countries ${u.home.map(c => COUNTRY[c]).join(', ')}</dd><dt>Usual device</dt><dd>Managed ${u.device.toLowerCase()}</dd><dt>Working hours</dt><dd>Roughly 08:30–19:00 local time</dd><dt>Apps used</dt><dd>${Object.entries(byApp).sort((a, b) => b[1] - a[1]).map(([a, n]) => `${esc((S.appById[a] || {name:a}).name)} (${n})`).join(', ')}</dd></dl></div>
+    <div class="sec"><h3>Alerts</h3>${al.length ? `<div class="list" style="border:1px solid var(--line);border-radius:10px">${al.slice(0, 8).map(alertLi).join('')}</div>` : '<p class="muted">No alerts for this user.</p>'}</div>
+    <div class="sec"><h3>Recent activity</h3><div class="timeline">${evs.slice(0, 14).map(e => `<div class="${S.alertsByEvent.has(e.id) ? 'hit' : ''}"><b>${ACTION_LABEL[e.action]}</b> on ${esc((S.appById[e.app] || {name:e.app}).name)} ${e.file ? `<span class="muted">${esc(e.file.name)}</span>` : ''}<small>${fmtFull(e.ts)}, ${esc(e.city)} <a href="#" data-ev="${e.id}">${e.id}</a></small></div>`).join('')}</div></div>
+  </div>
+  <div class="drawer-f"><button class="btn" id="uFilter">See all activity</button><button class="btn" data-uact="Required MFA re-authentication">Require MFA</button><button class="btn danger" data-uact="Suspended user account">Suspend (simulated)</button></div>`);
+  const dr = $('#drawer'); bindAlertLis(dr);
+  $$('[data-ev]', dr).forEach(l => l.onclick = ev => { ev.preventDefault(); openEvent(l.dataset.ev); });
+  $('#uFilter', dr).onclick = () => { closeDrawer(); Object.assign(S.act, {q:'', user:uid, app:'', action:'', flag:'', page:0, range:'7d'}); go('activity'); };
+  $$('[data-uact]', dr).forEach(b => b.onclick = () => { audit(b.dataset.uact + ' (simulated)', u.name); toast(b.dataset.uact, 'Simulated in demo mode, logged to the audit trail'); });
+}
+
+/* ============================================================
+   View: Cloud apps (discovery + shadow IT)
+   ============================================================ */
+function vApps(){
+  const apps = Object.values(S.appById).map(a => { const evs = S.events.filter(e => e.app === a.id); return {a, r:appRisk(a), users:new Set(evs.map(e => e.user)).size, events:evs.length, up:evs.filter(e => e.action === 'upload').reduce((s, e) => s + (e.sizeMB || 0), 0)}; }).sort((x, y) => y.r.score - x.r.score);
+  const st = s => apps.filter(x => x.a.status === s).length;
+  $('#view').innerHTML = `
+  <div class="page-head"><div><h1>Cloud app discovery</h1><p>Every app seen in the logs, scored on its security attributes. Marking an app as unsanctioned turns on the shadow-IT rule for it straight away.</p></div></div>
+  <div class="grid g-kpi" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+    <div class="panel kpi"><span class="lbl">Apps discovered</span><span class="val">${apps.length}</span></div>
+    <div class="panel kpi"><span class="lbl">Sanctioned</span><span class="val" style="color:var(--low)">${st('sanctioned')}</span></div>
+    <div class="panel kpi"><span class="lbl">Under review</span><span class="val" style="color:var(--med)">${st('review')}</span></div>
+    <div class="panel kpi"><span class="lbl">Unsanctioned in use</span><span class="val" style="color:var(--crit)">${apps.filter(x => x.a.status === 'unsanctioned' && x.events).length}</span></div></div>
+  <section class="panel"><div class="tbl-wrap"><table><thead><tr><th>App</th><th style="width:170px">Risk score</th><th>Status</th><th class="num">Users</th><th class="num hide-sm">Events</th><th class="num hide-sm">Uploaded</th><th class="hide-sm">Controls</th></tr></thead>
+  <tbody>${apps.map(({a, r, users, events, up}) => { const b = riskBand(r.score); const col = b === 'critical' ? 'crit' : b === 'medium' ? 'med' : b; return `<tr class="click" data-app="${a.id}"><td>${appCell(a.id, a.cat + (a.fictional ? ' (fictional)' : '') + (a.discovered ? ', discovered from logs' : ''))}</td>
+    <td><div style="display:flex;gap:8px;align-items:center"><div class="bar" style="flex:1"><i style="width:${r.score}%;background:var(--${col})"></i></div><b style="width:26px;text-align:right">${r.score}</b></div></td>
+    <td><select class="sel" data-ast="${a.id}" aria-label="Status for ${esc(a.name)}" style="height:28px">${[['sanctioned','Sanctioned'],['review','Under review'],['unsanctioned','Unsanctioned']].map(([v, l]) => `<option value="${v}" ${a.status === v ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
+    <td class="num">${users}</td><td class="num hide-sm">${fmtN(events)}</td><td class="num hide-sm">${fmtSize(up) || '0 KB'}</td>
+    <td class="hide-sm">${['mfa','sso','enc'].map(k => `<span class="tag ${a.attrs[k] ? 'ok' : 'bad'}">${{mfa:'MFA', sso:'SSO', enc:'Encryption'}[k]}</span>`).join(' ')}</td></tr>`; }).join('')}</tbody></table></div></section>`;
+  $$('[data-ast]').forEach(s => { s.onclick = e => e.stopPropagation(); s.onchange = () => setAppStatus(s.dataset.ast, s.value); });
+  $$('[data-app]').forEach(r => r.onclick = () => openApp(r.dataset.app));
+}
+function setAppStatus(id, v){ const a = S.appById[id]; a.status = v; P.appStatus[id] = v; audit('App status changed', `${a.name} to ${v}`); const before = S.alerts.length; runAll(); renderNav(); persist(); toast(`${a.name} marked ${v === 'review' ? 'under review' : v}`, `${S.alerts.length - before >= 0 ? '+' : ''}${S.alerts.length - before} alerts after re-evaluation`); if (S.view === 'apps') vApps(); }
+function openApp(id){
+  const a = S.appById[id]; const r = appRisk(a); const evs = S.events.filter(e => e.app === id); const users = [...new Set(evs.map(e => e.user))];
+  openDrawer(`<div class="drawer-h"><span class="appdot" style="background:${a.color};width:44px;height:44px;font-size:15px;border-radius:12px">${esc(a.name.slice(0, 2))}</span><div class="grow"><h2>${esc(a.name)}</h2><p class="muted small">${esc(a.cat)}${a.fictional ? ', fictional app for the demo' : ''}</p></div><button class="icon-btn" data-close aria-label="Close">${icon('close', 18)}</button></div>
+  <div class="drawer-b">
+    <div class="verdict"><div><div class="muted small">Risk score</div><b style="color:var(--${riskBand(r.score) === 'critical' ? 'crit' : riskBand(r.score) === 'medium' ? 'med' : riskBand(r.score)})">${r.score} / 100</b></div><div style="margin-left:auto">${appStatusTag(a.status)}</div></div>
+    <div class="sec"><h3>How the score is built</h3><div class="why"><table><tbody><tr><td>Baseline for any third-party app</td><td class="num">+8</td></tr>${r.why.map(([l, n]) => `<tr><td>${esc(l)}</td><td class="num"><b>+${n}</b></td></tr>`).join('')}</tbody></table></div></div>
+    <div class="sec"><h3>Security attributes</h3><dl class="kv"><dt>Multi-factor auth</dt><dd>${a.attrs.mfa ? 'Supported' : 'Not supported'}</dd><dt>Single sign-on</dt><dd>${a.attrs.sso ? 'Supported' : 'Not supported'}</dd><dt>Encryption at rest</dt><dd>${a.attrs.enc ? 'Yes' : 'No'}</dd><dt>Certifications</dt><dd>${(a.attrs.certs || []).join(', ') || 'None found'}</dd><dt>Breach history</dt><dd>${a.attrs.breach ? 'Breach in the last 3 years' : 'None known'}</dd><dt>Data residency</dt><dd>${esc(a.attrs.residency || 'Unknown')}</dd></dl></div>
+    <div class="sec"><h3>Usage</h3><p class="muted">${users.length} users, ${fmtN(evs.length)} events in the last 7 days.</p><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${users.map(uid => `<span class="tag">${esc(S.userById[uid].name)}</span>`).join('')}</div></div>
+  </div>
+  <div class="drawer-f">${['sanctioned','review','unsanctioned'].filter(s => s !== a.status).map(s => `<button class="btn ${s === 'unsanctioned' ? 'danger' : ''}" data-set="${s}">Mark ${s === 'review' ? 'under review' : s}</button>`).join('')}</div>`);
+  $$('[data-set]', $('#drawer')).forEach(b => b.onclick = () => { setAppStatus(id, b.dataset.set); openApp(id); });
+}
+
+/* ============================================================
+   View: Data protection (DLP)
+   ============================================================ */
+const DETECTORS = [
+  {id:'card', name:'Payment card number', sev:'critical', re:/\b(?:\d[ -]?){13,19}\b/g, check:s => luhn(s.replace(/\D/g, '')), mask:s => s.replace(/\d(?=(?:[ -]?\d){4})/g, '•')},
+  {id:'aadhaar', name:'Aadhaar-format number', sev:'critical', re:/\b[2-9]\d{3}[ -]?\d{4}[ -]?\d{4}\b/g, mask:s => s.replace(/\d(?=(?:[ -]?\d){4})/g, '•')},
+  {id:'key', name:'Private key block', sev:'critical', re:/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g, mask:() => '[private key redacted]'},
+  {id:'aws', name:'Cloud access key', sev:'critical', re:/\bAKIA[0-9A-Z]{16}\b/g, mask:s => s.slice(0, 4) + '•'.repeat(12) + s.slice(-4)},
+  {id:'pwd', name:'Password in plain text', sev:'high', re:/\b(?:password|passwd|pwd|secret)\s*[:=]\s*\S+/gi, mask:s => s.replace(/([:=]\s*)\S+$/, '$1••••••••')},
+  {id:'pan', name:'PAN (tax ID) format', sev:'high', re:/\b[A-Z]{5}\d{4}[A-Z]\b/g, mask:s => s.slice(0, 2) + '•••••••' + s.slice(-1)},
+  {id:'ifsc', name:'Bank IFSC code', sev:'medium', re:/\b[A-Z]{4}0[A-Z0-9]{6}\b/g, mask:s => s.slice(0, 4) + '•••••••'},
+  {id:'phone', name:'Indian mobile number', sev:'medium', re:/(?:\+91[ -]?)?\b[6-9]\d{9}\b/g, mask:s => s.slice(0, -6).replace(/\d/g, '•') + '••••' + s.slice(-2)},
+  {id:'email', name:'Email address', sev:'low', re:/\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g, mask:s => s[0] + '•••@' + s.split('@')[1]}
+];
+function luhn(n){ if (n.length < 13 || n.length > 19) return false; let s = 0, alt = false; for (let i = n.length - 1; i >= 0; i--){ let d = +n[i]; if (alt){ d *= 2; if (d > 9) d -= 9; } s += d; alt = !alt; } return s % 10 === 0; }
+function scanText(text){
+  const found = [];
+  for (const d of DETECTORS){ d.re.lastIndex = 0; let m; while ((m = d.re.exec(text))){ if (d.check && !d.check(m[0])) continue; found.push({d, start:m.index, end:m.index + m[0].length, text:m[0]}); } }
+  found.sort((a, b) => a.start - b.start || SEV_ORDER[b.d.sev] - SEV_ORDER[a.d.sev] || (b.end - b.start) - (a.end - a.start));
+  const out = []; let lastEnd = -1; for (const f of found){ if (f.start >= lastEnd){ out.push(f); lastEnd = f.end; } }
+  return out;
+}
+const DLP_SAMPLE = `From: aarav.mehta@meridiantech.demo
+To: vendor-billing@northwind-partners.demo
+Subject: Reimbursement details (fictional test data)
+
+Hi team, please process the refund to the card below.
+Card: 4111 1111 1111 1111   Expiry 09/29
+Customer Aadhaar: 2345 6789 0123
+PAN: ABCDE1234F   IFSC: MERI0001234
+Call me on +91 9876543210 if anything is missing.
+
+Also, the staging config still has these in it:
+AWS key AKIAIOSFODNN7EXAMPLE
+db_password = Winter2026!`;
+function vDlp(){
+  if (S.dlpText == null) S.dlpText = DLP_SAMPLE;
+  const vio = FILES.filter(fileViolation);
+  $('#view').innerHTML = `
+  <div class="page-head"><div><h1>Data protection</h1><p>Classify content before it leaves, and find sensitive files that are shared more widely than their label allows.</p></div></div>
+  <div class="grid g-2e">
+    <section class="panel"><div class="panel-h"><div><h2>Content inspection</h2><p>Paste text the way it would be uploaded or shared. Detection runs in your browser.</p></div></div>
+      <div class="panel-b" style="display:grid;gap:12px"><textarea class="inp mono" id="dlpIn" rows="10" aria-label="Text to inspect">${esc(S.dlpText)}</textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="dlpScan">Inspect content</button><button class="btn" id="dlpSample">Load sample</button><button class="btn ghost" id="dlpClear">Clear</button>
+      <label style="margin-left:auto;display:flex;align-items:center;gap:8px" class="small"><span class="switch"><input type="checkbox" id="dlpMask" ${S.dlpMask ? 'checked' : ''}><span></span></span>Mask findings</label></div></div></section>
+    <section class="panel"><div class="panel-h"><div><h2>Result</h2><p>Highlighted matches and the label the content should carry</p></div></div><div class="panel-b" id="dlpOut" style="display:grid;gap:12px"></div></section>
+  </div>
+  <section class="panel"><div class="panel-h" style="padding-bottom:12px"><div><h2>Sensitive files and how they are shared</h2><p>${vio.length} files are shared beyond what their label allows</p></div></div>
+    <div class="tbl-wrap"><table><thead><tr><th>File</th><th>Label</th><th>Shared as</th><th>Owner</th><th class="hide-sm">App</th><th class="num hide-sm">Size</th><th>Finding</th><th></th></tr></thead>
+    <tbody>${FILES.map(f => { const v = fileViolation(f); return `<tr><td><b style="font-weight:500">${esc(f.name)}</b></td><td><span class="tag ${LABEL_TAG[f.label]}">${f.label}</span></td><td class="nowrap">${EXPOSURE_LABEL[f.exposure]}</td><td>${userCell(f.owner)}</td><td class="hide-sm">${appCell(f.app, false)}</td><td class="num hide-sm">${fmtSize(f.sizeMB)}</td>
+      <td>${v ? `<span class="chip sev-${f.label === 'Restricted' ? 'critical' : 'high'}">Over-shared</span>` : '<span class="faint small">Within policy</span>'}</td><td>${v ? `<button class="btn sm" data-fix="${f.id}">Restrict sharing</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div></section>`;
+  const run = () => { S.dlpText = $('#dlpIn').value; drawDlp(); };
+  $('#dlpScan').onclick = run; $('#dlpIn').oninput = () => { S.dlpText = $('#dlpIn').value; };
+  $('#dlpSample').onclick = () => { $('#dlpIn').value = DLP_SAMPLE; run(); };
+  $('#dlpClear').onclick = () => { $('#dlpIn').value = ''; run(); };
+  $('#dlpMask').onchange = e => { S.dlpMask = e.target.checked; drawDlp(); };
+  $$('[data-fix]').forEach(b => b.onclick = () => { const f = FILES.find(x => x.id === b.dataset.fix); f.exposure = 'internal'; P.fileExposure[f.id] = 'internal'; persist(); audit('Restricted file sharing (simulated)', f.name); toast('Sharing restricted', `${f.name} is now internal only (simulated)`); vDlp(); });
+  drawDlp();
+}
+function drawDlp(){
+  const text = S.dlpText || ''; const hits = scanText(text); const out = $('#dlpOut'); if (!out) return;
+  if (!text.trim()){ out.innerHTML = '<div class="empty"><b>Nothing to inspect</b>Paste some text or load the sample.</div>'; return; }
+  let html = '', i = 0; for (const h of hits){ html += esc(text.slice(i, h.start)); html += `<mark class="${h.d.sev}" title="${esc(h.d.name)}">${esc(S.dlpMask ? h.d.mask(h.text) : h.text)}</mark>`; i = h.end; } html += esc(text.slice(i));
+  const by = {}; hits.forEach(h => { by[h.d.id] = by[h.d.id] || {d:h.d, n:0}; by[h.d.id].n++; });
+  const top = hits.reduce((m, h) => SEV_ORDER[h.d.sev] > (SEV_ORDER[m] || 0) ? h.d.sev : m, 'none');
+  const label = top === 'critical' ? 'Restricted' : top === 'high' || top === 'medium' ? 'Confidential' : top === 'low' ? 'Internal' : 'Public';
+  out.innerHTML = `<div class="verdict"><div><div class="muted small">Suggested label</div><b>${label}</b></div><div style="margin-left:auto;text-align:right"><div class="muted small">Findings</div><b>${hits.length}</b></div></div>
+    ${label === 'Restricted' ? '<div class="callout"><b>Upload would be held for review.</b> Restricted content cannot go to external recipients or unsanctioned apps under the data protection policy.</div>' : ''}
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${Object.values(by).sort((a, b) => SEV_ORDER[b.d.sev] - SEV_ORDER[a.d.sev]).map(({d, n}) => `<span class="chip sev-${d.sev}">${esc(d.name)} × ${n}</span>`).join('') || '<span class="muted small">No sensitive patterns found.</span>'}</div>
+    <div class="scan-out">${html}</div>`;
+}
+
+/* ============================================================
+   View: Log ingestion
+   ============================================================ */
+const ACTION_SYN = {login:'login', signin:'login', userloggedin:'login', 'sign-in':'login', login_success:'login', loginfailed:'login_failed', userloginfailed:'login_failed', login_failed:'login_failed', failedlogin:'login_failed',
+  view:'view', fileaccessed:'view', fileviewed:'view', download:'download', filedownloaded:'download', upload:'upload', fileuploaded:'upload', share:'share_internal', share_internal:'share_internal', sharinginvitationcreated:'share_external',
+  share_external:'share_external', anonymouslinkcreated:'share_public', share_public:'share_public', publiclink:'share_public', delete:'delete', filedeleted:'delete', filerecycled:'delete', 'add member to role':'admin_role_change', admin_role_change:'admin_role_change', consent:'oauth_grant', oauth_grant:'oauth_grant', 'consent to application':'oauth_grant'};
+function sampleCsv(){
+  const t = h => { const d = new Date(startOfDay(Date.now()) - DAY + h*HOUR); return d.toISOString().slice(0, 19); };
+  return `timestamp,user,app,action,size,file,label,country,city,ip,device,managed,network,target
+${t(9.2)},ishita.rao@meridiantech.demo,GitHub,login,,,,IN,Bengaluru,10.22.4.11,Laptop,true,corporate,
+${t(9.4)},ishita.rao@meridiantech.demo,GitHub,FileDownloaded,14MB,api-gateway.zip,Internal,IN,Bengaluru,10.22.4.11,Laptop,true,corporate,
+${t(10.1)},rohan.kapoor@meridiantech.demo,Salesforce,UserLoginFailed,,,,IN,New Delhi,49.36.10.2,Laptop,true,home,
+${t(10.5)},neha.bhat@meridiantech.demo,Canva,login,,,,IN,Jammu,49.36.51.2,Laptop,true,home,
+${t(10.6)},neha.bhat@meridiantech.demo,Canva,FileUploaded,62MB,Diwali_Campaign.psd,Internal,IN,Jammu,49.36.51.2,Laptop,true,home,
+${t(11.0)},priya.nair@meridiantech.demo,Microsoft 365,FileDownloaded,1.4GB,FY26_Ledger_Export.zip,Restricted,IN,Mumbai,49.36.12.90,Laptop,false,home,
+${t(11.3)},priya.nair@meridiantech.demo,Microsoft 365,SharingInvitationCreated,,FY26_Ledger_Export.zip,Restricted,IN,Mumbai,49.36.12.90,Laptop,false,home,priya.nair.personal@gmail.com
+${t(12.0)},unknown.contractor@external.demo,Slack,login,,,,IN,Pune,49.36.77.3,Laptop,false,home,
+${t(12.4)},emily.chen@meridiantech.demo,Notion,TeleportedFile,,roadmap.md,Internal,SG,Singapore,116.86.4.77,Laptop,true,home,
+${t(13.1)},arjun.malhotra@meridiantech.demo,GitHub,login,,,,IN,Pune,not-a-date-test,Laptop,true,home,
+not-a-timestamp,kabir.singh@meridiantech.demo,AWS Console,login,,,,IN,New Delhi,10.20.1.5,Laptop,true,corporate,
+${t(14.2)},sana.qureshi@meridiantech.demo,Dropbox Business,AnonymousLinkCreated,,NDA_Template.docx,Confidential,IN,Jammu,10.21.8.4,Laptop,true,corporate,`;
+}
+function parseCsv(text){
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++){ const ch = text[i];
+    if (q){ if (ch === '"'){ if (text[i + 1] === '"'){ cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"') q = true; else if (ch === ','){ row.push(cur); cur = ''; } else if (ch === '\n' || ch === '\r'){ if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cur); rows.push(row); row = []; cur = ''; } else cur += ch; }
+  if (cur || row.length){ row.push(cur); rows.push(row); }
+  const head = (rows.shift() || []).map(h => h.trim().toLowerCase());
+  return rows.filter(r => r.some(c => c.trim())).map(r => Object.fromEntries(head.map((h, i) => [h, (r[i] || '').trim()])));
+}
+function parseSize(s){ if (!s) return null; const m = String(s).trim().match(/^([\d.]+)\s*(kb|mb|gb|b)?$/i); if (!m) return NaN; const n = +m[1]; const u = (m[2] || 'mb').toLowerCase(); return u === 'gb' ? n*1024 : u === 'kb' ? n/1024 : u === 'b' ? n/1048576 : n; }
+function normalise(records){
+  const out = []; const newApps = {};
+  records.forEach((r, i) => {
+    const errs = []; const ts = Date.parse(r.timestamp || r.time || r.ts);
+    if (isNaN(ts)) errs.push('Timestamp could not be read');
+    const uk = (r.user || r.email || '').toLowerCase(); const u = USERS.find(x => x.email === uk || x.name.toLowerCase() === uk || x.id === uk);
+    if (!uk) errs.push('User is missing'); else if (!u) errs.push('User is not in the directory');
+    const an = (r.app || r.application || '').trim(); let app = Object.values(S.appById).find(a => a.name.toLowerCase() === an.toLowerCase() || a.id === an.toLowerCase());
+    if (!an) errs.push('App is missing');
+    const act = ACTION_SYN[(r.action || r.operation || '').toLowerCase().replace(/\s+/g, ' ').trim()] || ACTION_SYN[(r.action || '').toLowerCase().replace(/[\s-]/g, '')];
+    if (!act) errs.push(`Unknown action “${r.action}”`);
+    const size = parseSize(r.size || r.bytes); if (Number.isNaN(size)) errs.push('Size could not be read');
+    const label = r.label ? LABELS.find(l => l.toLowerCase() === r.label.toLowerCase()) : null;
+    const cc = (r.country || '').toUpperCase(); const city = r.city || ''; const geo = PLACES[city] || COUNTRY_CENTER[cc] || COUNTRY_CENTER.IN;
+    if (an && !app && !errs.length){ const id = an.toLowerCase().replace(/[^a-z0-9]/g, ''); app = newApps[id] || {id, name:an, cat:'Discovered from logs', status:'review', status0:'review', color:'#64748B', discovered:true, attrs:{mfa:false, sso:false, enc:true, certs:[], breach:false, residency:'Unknown'}}; newApps[id] = app; }
+    const ev = errs.length ? null : {ts, user:u.id, app:app.id, action:act, status:act === 'login_failed' ? 'failure' : 'success', city:city || '—', country:cc || '—', lat:geo.lat, lon:geo.lon, ip:r.ip || '—',
+      network:['corporate','home','anonymizer'].includes((r.network || '').toLowerCase()) ? r.network.toLowerCase() : 'home', device:{type:r.device || 'Laptop', managed:String(r.managed).toLowerCase() === 'true', os:'Unknown'},
+      sizeMB:size, file:r.file ? {name:r.file, label:label || 'Internal'} : null, target:r.target || null, scopes:r.scopes ? r.scopes.split(/[;|]/) : null, role:r.role || null, src:'import'};
+    out.push({row:i + 2, raw:r, errs, ev});
+  });
+  return {rows:out, newApps:Object.values(newApps)};
+}
+function vIngest(){
+  const ing = S.ingest;
+  $('#view').innerHTML = `
+  <div class="page-head"><div><h1>Log ingestion</h1><p>Bring in activity exported from a cloud service as CSV or JSON. Each row is validated, mapped to the common event format and run through the policy engine. Unknown apps are added to discovery for review.</p></div>
+    <div class="actions"><button class="btn" id="dlSample">${icon('download')}Download sample CSV</button></div></div>
+  <div class="grid g-2e">
+    <section class="panel"><div class="panel-h"><div><h2>1. Load a log file</h2><p>Columns: timestamp, user, app, action, size, file, label, country, city, ip, device, managed, network, target</p></div></div>
+      <div class="panel-b" style="display:grid;gap:12px">
+        <label class="drop" id="drop"><b style="color:var(--text)">Drop a .csv or .json file here</b><span class="small">or choose one from your computer</span><input type="file" id="file" accept=".csv,.json,text/csv,application/json" class="sr"><span class="btn sm">Choose file</span></label>
+        <div style="display:flex;gap:8px;align-items:center"><span class="muted small">No file handy?</span><button class="btn sm" id="useSample">Use the sample log</button></div>
+        <div class="field"><label for="paste">Or paste log lines</label><textarea class="inp mono" id="paste" rows="5" placeholder="timestamp,user,app,action,..."></textarea></div>
+        <div><button class="btn primary" id="validate">Validate and preview</button></div></div></section>
+    <section class="panel"><div class="panel-h"><div><h2>2. Validation summary</h2><p>Nothing is added until you import</p></div></div><div class="panel-b" id="ingSum">${ing ? '' : '<div class="empty"><b>No file checked yet</b>Load a file or use the sample to see how rows are validated.</div>'}</div></section>
+  </div>
+  ${ing ? `<section class="panel"><div class="panel-h" style="padding-bottom:12px"><h2>3. Row-by-row result</h2></div><div class="tbl-wrap"><table><thead><tr><th>Row</th><th>Result</th><th>Normalised as</th><th>Raw action</th><th>Reason</th></tr></thead><tbody>
+    ${ing.rows.map(r => `<tr><td class="mono">${r.row}</td><td>${r.errs.length ? '<span class="tag bad">Rejected</span>' : '<span class="tag ok">Accepted</span>'}</td><td>${r.ev ? `${esc(S.userById[r.ev.user].name)}, ${ACTION_LABEL[r.ev.action]} on ${esc((S.appById[r.ev.app] || ing.newApps.find(a => a.id === r.ev.app) || {name:r.ev.app}).name)}${r.ev.sizeMB ? ', ' + fmtSize(r.ev.sizeMB) : ''}` : '—'}</td><td class="mono small">${esc(r.raw.action || '')}</td><td class="small ${r.errs.length ? '' : 'faint'}">${esc(r.errs.join('; ') || 'Valid')}</td></tr>`).join('')}</tbody></table></div></section>` : ''}
+  ${P.imported.length ? `<section class="panel"><div class="panel-h" style="padding-bottom:14px"><div><h2>Imported so far</h2><p>${P.imported.length} events from log files are part of the dataset</p></div><div class="r"><button class="btn sm danger" id="clearImp">Remove imported events</button></div></div></section>` : ''}`;
+  const doParse = (text, name) => {
+    let recs; try { recs = /^\s*[\[{]/.test(text) ? [].concat(JSON.parse(text)) : parseCsv(text); } catch(e){ toast('That file could not be read', 'Check it is valid CSV or JSON'); return; }
+    if (!recs.length){ toast('No rows found', 'The file needs a header row and at least one record'); return; }
+    S.ingest = Object.assign(normalise(recs), {name}); vIngest(); drawIngestSummary();
+  };
+  $('#file').onchange = e => { const f = e.target.files[0]; if (f) f.text().then(t => doParse(t, f.name)); };
+  const dz = $('#drop'); dz.ondragover = e => { e.preventDefault(); dz.classList.add('over'); }; dz.ondragleave = () => dz.classList.remove('over');
+  dz.ondrop = e => { e.preventDefault(); dz.classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) f.text().then(t => doParse(t, f.name)); };
+  $('#useSample').onclick = () => doParse(sampleCsv(), 'sample-cloud-log.csv');
+  $('#validate').onclick = () => { const t = $('#paste').value.trim(); if (!t){ toast('Paste some log lines first'); return; } doParse(t, 'pasted lines'); };
+  $('#dlSample').onclick = () => exportFile('sample-cloud-log.csv', sampleCsv());
+  const ci = $('#clearImp'); if (ci) ci.onclick = () => { S.events = S.events.filter(e => e.src !== 'import'); P.imported = []; audit('Imported events removed', ''); persist(); runAll(); renderNav(); toast('Imported events removed'); vIngest(); };
+  if (ing) drawIngestSummary();
+}
+function drawIngestSummary(){
+  const ing = S.ingest; if (!ing || !$('#ingSum')) return; const ok = ing.rows.filter(r => !r.errs.length); const bad = ing.rows.length - ok.length;
+  const reasons = {}; ing.rows.forEach(r => r.errs.forEach(e => { const k = e.replace(/“.*”/, '“…”'); reasons[k] = (reasons[k] || 0) + 1; }));
+  const preview = createEngine(); let flagged = 0; ok.forEach(r => { r.ev.id = 'tmp'; const app = S.appById[r.ev.app]; if (!app){ S.appById[r.ev.app] = ing.newApps.find(a => a.id === r.ev.app); } if (preview.process(r.ev).length) flagged++; if (!app) delete S.appById[r.ev.app]; });
+  $('#ingSum').innerHTML = `<div class="grid g-3" style="gap:10px"><div class="panel kpi" style="box-shadow:none"><span class="lbl">Rows read</span><span class="val">${ing.rows.length}</span></div><div class="panel kpi" style="box-shadow:none"><span class="lbl">Accepted</span><span class="val" style="color:var(--low)">${ok.length}</span></div><div class="panel kpi" style="box-shadow:none"><span class="lbl">Rejected</span><span class="val" style="color:var(--crit)">${bad}</span></div></div>
+    <dl class="kv"><dt>Source</dt><dd>${esc(ing.name)}</dd><dt>Would be flagged</dt><dd>${flagged} of ${ok.length} accepted rows match a policy</dd><dt>New apps found</dt><dd>${ing.newApps.length ? ing.newApps.map(a => esc(a.name)).join(', ') + ' (added for review)' : 'None'}</dd>${Object.keys(reasons).length ? `<dt>Rejection reasons</dt><dd>${Object.entries(reasons).map(([k, n]) => `${esc(k)} (${n})`).join('<br>')}</dd>` : ''}</dl>
+    <div><button class="btn primary" id="doImport" ${ok.length ? '' : 'disabled'}>Import ${ok.length} events</button></div>`;
+  $('#doImport').onclick = () => {
+    ing.newApps.forEach(a => { if (!S.appById[a.id]){ P.discovered.push(a); } }); rebuildApps();
+    const base = P.imported.length; ok.forEach((r, i) => { r.ev.id = 'IM-' + String(base + i + 1).padStart(5, '0'); S.events.push(r.ev); P.imported.push(r.ev); });
+    P.imported = P.imported.slice(-2000); audit('Log file imported', `${ing.name}: ${ok.length} events`); persist();
+    const before = S.alerts.length; runAll(); renderNav(); toast(`Imported ${ok.length} events`, `${S.alerts.length - before} new alerts raised`); S.ingest = null; vIngest();
+  };
+}
+
+/* ============================================================
+   View: Test lab (evaluation plan)
+   ============================================================ */
+function scenarios(){
+  const T = startOfDay(Date.now()) - DAY + 11*HOUR; let n = 0;
+  const ev = (o, m) => { const e = mkEvent(Object.assign({ts:T + m*MIN, network:'corporate', ip:'10.20.0.10'}, o)); e.id = 'T-' + (++n); return e; };
+  return [
+    {id:'S01', name:'Five failed sign-ins in six minutes', expect:['AC-01'], events:[0,1.5,3,4.5,6].map(m => ev({user:'u05', app:'m365', action:'login_failed'}, m))},
+    {id:'S02', name:'Four failed sign-ins then success (benign)', expect:[], events:[...[0,1,2,3].map(m => ev({user:'u01', app:'sfdc', action:'login_failed'}, m)), ev({user:'u01', app:'sfdc', action:'login'}, 4)]},
+    {id:'S03', name:'Sign-in from Brazil for an India-based user', expect:['AC-02'], events:[ev({user:'u06', app:'m365', action:'login', city:'São Paulo', network:'home', ip:'177.68.1.1'}, 0)]},
+    {id:'S04', name:'Delhi then São Paulo two hours later', expect:['AC-03','AC-02'], events:[ev({user:'u13', app:'m365', action:'login'}, 0), ev({user:'u13', app:'m365', action:'login', city:'São Paulo', network:'home'}, 120)]},
+    {id:'S05', name:'1.2 GB download', expect:['DP-01'], events:[ev({user:'u02', app:'github', action:'download', sizeMB:1229, file:{name:'repo.zip', label:'Internal'}}, 0)]},
+    {id:'S06', name:'120 MB download (benign)', expect:[], events:[ev({user:'u02', app:'github', action:'download', sizeMB:120, file:{name:'build.zip', label:'Internal'}}, 0)]},
+    {id:'S07', name:'Public link on a Restricted file', expect:['DP-02'], events:[ev({user:'u04', app:'gws', action:'share_public', file:{name:'Salary_Bands_2026.xlsx', label:'Restricted'}}, 0)]},
+    {id:'S08', name:'Public link on a Public brochure (benign)', expect:[], events:[ev({user:'u08', app:'gws', action:'share_public', file:{name:'Brand_Guidelines.pdf', label:'Public'}}, 0)]},
+    {id:'S09', name:'Customer list shared to Gmail', expect:['DP-03'], events:[ev({user:'u09', app:'sfdc', action:'share_external', city:'London', target:'someone@gmail.com', file:{name:'Leads.csv', label:'Confidential'}}, 0)]},
+    {id:'S10', name:'25 files deleted in eight minutes', expect:['DP-05'], events:Array.from({length:25}, (_, i) => ev({user:'u13', app:'dropbox', action:'delete', file:{name:`f${i}.pdf`, label:'Internal'}}, i*.33))},
+    {id:'S11', name:'Upload to an unsanctioned app', expect:['AR-01'], events:[ev({user:'u08', app:'dropzap', action:'upload', sizeMB:40, file:{name:'assets.zip', label:'Internal'}, network:'home'}, 0)]},
+    {id:'S12', name:'Third-party app granted full file access', expect:['AR-02'], events:[ev({user:'u07', app:'gws', action:'oauth_grant', target:'QuickPDF Online', scopes:['files.readwrite.all']}, 0)]},
+    {id:'S13', name:'Sign-in through Tor', expect:['AC-04'], events:[ev({user:'u02', app:'github', action:'login', network:'anonymizer', ip:'185.220.101.9'}, 0)]},
+    {id:'S14', name:'Admin role granted', expect:['AR-03'], events:[ev({user:'u03', app:'m365', action:'admin_role_change', role:'Global Administrator', target:'arjun.malhotra@meridiantech.demo'}, 0)]},
+    {id:'S15', name:'Restricted file on a personal phone', expect:['DP-04'], events:[ev({user:'u10', app:'dropbox', action:'view', file:{name:'Audit.zip', label:'Restricted'}, device:{type:'Mobile', managed:false, os:'iOS 18'}}, 0)]},
+    {id:'S16', name:'Ordinary working session (benign)', expect:[], events:[ev({user:'u01', app:'m365', action:'login'}, 0), ev({user:'u01', app:'m365', action:'view', file:{name:'Budget.xlsx', label:'Confidential'}}, 5), ev({user:'u01', app:'m365', action:'download', sizeMB:18, file:{name:'Budget.xlsx', label:'Confidential'}}, 9), ev({user:'u01', app:'m365', action:'share_internal', target:'priya.nair@meridiantech.demo', file:{name:'Budget.xlsx', label:'Confidential'}}, 12)]}
+  ];
+}
+function runSuite(){
+  const sc = scenarios(); let tp = 0, fp = 0, fn = 0, events = 0; const t0 = performance.now();
+  const res = sc.map(s => { const eng = createEngine({defaults:!S.lab.useCurrent}); const got = new Set(); s.events.forEach(e => { events++; eng.process(e).forEach(h => got.add(h.ruleId)); });
+    const exp = new Set(s.expect); const sTp = [...got].filter(r => exp.has(r)).length; const sFp = [...got].filter(r => !exp.has(r)).length; const sFn = [...exp].filter(r => !got.has(r)).length;
+    tp += sTp; fp += sFp; fn += sFn; return {...s, got:[...got], pass:!sFp && !sFn, sFp, sFn}; });
+  const ms = performance.now() - t0;
+  S.lab.last = {res, tp, fp, fn, ms, events, passed:res.filter(r => r.pass).length, precision:tp + fp ? tp/(tp + fp) : 1, recall:tp + fn ? tp/(tp + fn) : 1, at:Date.now(), mode:S.lab.useCurrent ? 'current' : 'default'};
+  audit('Test suite run', `${S.lab.last.passed}/${res.length} passed`);
+}
+function runBench(){
+  const sizes = [1000, 10000, 50000]; const rnd = mulberry32(7); const out = [];
+  for (const n of sizes){ const evs = []; let ts = Date.now() - 7*DAY;
+    for (let i = 0; i < n; i++){ ts += 12e3; const u = USERS[Math.floor(rnd()*USERS.length)]; const r = rnd();
+      const e = mkEvent({ts, user:u.id, app:u.apps[Math.floor(rnd()*u.apps.length)], action:r < .1 ? 'login_failed' : r < .3 ? 'login' : r < .6 ? 'view' : r < .8 ? 'download' : r < .95 ? 'upload' : 'delete', sizeMB:rnd()*700, file:{name:'f', label:LABELS[Math.floor(rnd()*4)]}}); e.id = 'B' + i; evs.push(e); }
+    const eng = createEngine(); let alerts = 0; const t0 = performance.now(); evs.forEach(e => alerts += eng.process(e).length); const ms = performance.now() - t0;
+    out.push({n, ms, rate:n/(ms/1000), alerts}); }
+  S.lab.bench = out; audit('Benchmark run', out.map(o => `${o.n}: ${o.ms.toFixed(0)} ms`).join(', '));
+}
+function vLab(){
+  if (!S.lab.last) runSuite();
+  const L = S.lab.last;
+  $('#view').innerHTML = `
+  <div class="page-head"><div><h1>Test lab</h1><p>Known scenarios with expected outcomes, as set out in the evaluation plan. Benign cases check for false positives; suspicious cases check that the right rule fires.</p></div>
+    <div class="actions"><label class="small" style="display:flex;align-items:center;gap:8px"><span class="switch"><input type="checkbox" id="useCur" ${S.lab.useCurrent ? 'checked' : ''}><span></span></span>Use my tuned policies</label><button class="btn primary" id="runSuite">${icon('play', 14)}Run test suite</button></div></div>
+  <div class="grid g-kpi">
+    <div class="panel kpi"><span class="lbl">Scenarios passed</span><span class="val" style="color:var(--${L.passed === L.res.length ? 'low' : 'crit'})">${L.passed} / ${L.res.length}</span><span class="sub">${L.mode === 'current' ? 'With your tuned policies' : 'With default thresholds'}</span></div>
+    <div class="panel kpi"><span class="lbl">Precision</span><span class="val">${(L.precision*100).toFixed(0)}%</span><span class="sub">${L.fp} false positives</span></div>
+    <div class="panel kpi"><span class="lbl">Recall</span><span class="val">${(L.recall*100).toFixed(0)}%</span><span class="sub">${L.fn} missed detections</span></div>
+    <div class="panel kpi"><span class="lbl">Events tested</span><span class="val">${L.events}</span><span class="sub">across ${L.res.length} scenarios</span></div>
+    <div class="panel kpi"><span class="lbl">Suite run time</span><span class="val">${L.ms.toFixed(1)}<span style="font-size:15px"> ms</span></span><span class="sub">${ago(L.at)}</span></div></div>
+  <section class="panel"><div class="panel-h" style="padding-bottom:12px"><h2>Scenario results</h2></div><div class="tbl-wrap"><table><thead><tr><th>ID</th><th>Scenario</th><th class="num">Events</th><th>Expected</th><th>Detected</th><th>Result</th></tr></thead><tbody>
+    ${L.res.map(r => `<tr><td class="mono">${r.id}</td><td>${esc(r.name)}</td><td class="num">${r.events.length}</td><td>${r.expect.length ? r.expect.map(x => `<span class="tag">${x}</span>`).join(' ') : '<span class="faint small">No alert</span>'}</td><td>${r.got.length ? r.got.map(x => `<span class="tag ${r.expect.includes(x) ? 'ok' : 'bad'}">${x}</span>`).join(' ') : '<span class="faint small">No alert</span>'}</td>
+    <td>${r.pass ? '<span class="res-pass">Pass</span>' : `<span class="res-fail">Fail</span> <span class="small muted">${r.sFp ? r.sFp + ' false positive' : ''}${r.sFp && r.sFn ? ', ' : ''}${r.sFn ? r.sFn + ' missed' : ''}</span>`}</td></tr>`).join('')}</tbody></table></div></section>
+  <div class="grid g-2e">
+    <section class="panel"><div class="panel-h"><div><h2>Performance benchmark</h2><p>Synthetic event batches pushed through the engine in this browser</p></div><div class="r"><button class="btn sm" id="runBench">Run benchmark</button></div></div>
+      <div class="panel-b">${S.lab.bench ? `<table><thead><tr><th class="num">Events</th><th class="num">Time</th><th class="num">Throughput</th><th class="num">Alerts</th></tr></thead><tbody>${S.lab.bench.map(b => `<tr><td class="num">${fmtN(b.n)}</td><td class="num">${b.ms.toFixed(0)} ms</td><td class="num">${fmtN(Math.round(b.rate))} /s</td><td class="num">${fmtN(b.alerts)}</td></tr>`).join('')}</tbody></table>` : '<div class="empty"><b>Not run yet</b>Processes 1,000, 10,000 and 50,000 events and reports throughput.</div>'}</div></section>
+    <section class="panel"><div class="panel-h"><div><h2>Event sandbox</h2><p>Build a single event and see which rules match. Stateless check, so window rules need the scenarios above.</p></div></div>
+      <div class="panel-b" style="display:grid;gap:10px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+          <div class="field"><label for="sbU">User</label><select class="sel" id="sbU">${USERS.map(u => `<option value="${u.id}">${esc(u.name)}</option>`).join('')}</select></div>
+          <div class="field"><label for="sbA">App</label><select class="sel" id="sbA">${Object.values(S.appById).map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select></div>
+          <div class="field"><label for="sbAct">Action</label><select class="sel" id="sbAct">${ACTIONS.map(a => `<option value="${a}" ${a === 'download' ? 'selected' : ''}>${ACTION_LABEL[a]}</option>`).join('')}</select></div>
+          <div class="field"><label for="sbSz">Size (MB)</label><input class="inp" id="sbSz" type="number" value="750"></div>
+          <div class="field"><label for="sbL">File label</label><select class="sel" id="sbL">${LABELS.map(l => `<option ${l === 'Restricted' ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+          <div class="field"><label for="sbC">City</label><select class="sel" id="sbC">${Object.keys(PLACES).map(c => `<option>${c}</option>`).join('')}</select></div>
+          <div class="field"><label for="sbN">Network</label><select class="sel" id="sbN"><option value="corporate">Corporate</option><option value="home">Home</option><option value="anonymizer">Tor / anonymiser</option></select></div>
+          <div class="field"><label for="sbD">Device</label><select class="sel" id="sbD"><option value="1">Managed</option><option value="0" selected>Unmanaged</option></select></div>
+          <div class="field"><label for="sbH">Hour</label><input class="inp" id="sbH" type="number" min="0" max="23" value="23"></div>
+          <div class="field"><label for="sbT">Share target</label><input class="inp" id="sbT" value="me@gmail.com"></div></div>
+        <div><button class="btn primary" id="sbRun">Evaluate event</button></div><div id="sbOut"></div></div></section></div>`;
+  $('#useCur').onchange = e => { S.lab.useCurrent = e.target.checked; runSuite(); vLab(); };
+  $('#runSuite').onclick = () => { runSuite(); vLab(); toast('Test suite finished', `${S.lab.last.passed} of ${S.lab.last.res.length} scenarios passed`); };
+  $('#runBench').onclick = () => { $('#runBench').textContent = 'Running…'; setTimeout(() => { runBench(); vLab(); }, 30); };
+  $('#sbRun').onclick = () => {
+    const d = new Date(startOfDay(Date.now())); d.setHours(+$('#sbH').value || 0, 15);
+    const e = mkEvent({ts:d.getTime(), user:$('#sbU').value, app:$('#sbA').value, action:$('#sbAct').value, city:$('#sbC').value, network:$('#sbN').value, ip:'203.0.113.10', device:{type:'Laptop', managed:$('#sbD').value === '1', os:'Windows 11'}, sizeMB:+$('#sbSz').value, file:{name:'sandbox_file.xlsx', label:$('#sbL').value}, target:$('#sbT').value, scopes:['files.readwrite.all'], role:'Global Administrator'}); e.id = 'SANDBOX';
+    const hits = createEngine().process(e);
+    $('#sbOut').innerHTML = hits.length ? `<div class="list" style="border:1px solid var(--line);border-radius:10px">${hits.map(h => `<div class="li">${sevChip(h.sev)}<div class="grow"><div class="t">${esc(h.ruleId)} ${esc(h.ruleName)}</div><div class="d" style="white-space:normal">${esc(h.summary)}</div></div></div>`).join('')}</div>` : '<div class="callout">No rule matched. This event would be <b>allowed and logged</b>.</div>';
+  };
+}
+
+/* ============================================================
+   View: Reports and compliance
+   ============================================================ */
+function vReports(){
+  const tab = S.tab.reports; const days = dayBuckets(); const al = S.alerts;
+  const enabledIds = new Set(RULES.filter(r => ruleConfig(r.id).enabled).map(r => r.id));
+  const ctl = CONTROLS.map(c => { const covered = c.rules.some(r => r.startsWith('*') || enabledIds.has(r)); const cnt = c.rules.reduce((s, r) => s + al.filter(a => a.ruleId === r).length, 0); return {...c, covered, cnt}; });
+  const resolved = al.filter(a => a.status === 'resolved' || a.status === 'false_positive').length;
+  $('#view').innerHTML = `
+  <div class="page-head"><div><h1>Reports and compliance</h1><p>Summaries for review meetings, exports for auditors, and the trail of every change made in this console.</p></div>
+    <div class="actions"><button class="btn" id="expRep">${icon('download')}Download HTML report</button><button class="btn" id="expAll">${icon('download')}Alerts CSV</button></div></div>
+  <section class="panel"><div class="tabs" role="tablist">${[['summary','Weekly summary'],['compliance','Control coverage'],['audit','Audit trail']].map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${tab === k}">${l}</button>`).join('')}</div>
+  <div id="repBody"></div></section>`;
+  const body = $('#repBody');
+  if (tab === 'summary'){
+    const byRule = {}; al.forEach(a => byRule[a.ruleName] = (byRule[a.ruleName] || 0) + 1); const topR = Object.entries(byRule).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    body.innerHTML = `<div class="panel-b" style="display:grid;gap:18px">
+      <div class="grid g-kpi"><div class="kpi"><span class="lbl">Events analysed</span><span class="val">${fmtN(S.events.length)}</span></div><div class="kpi"><span class="lbl">Alerts raised</span><span class="val">${fmtN(al.length)}</span></div><div class="kpi"><span class="lbl">Triaged</span><span class="val">${al.length ? Math.round(resolved/al.length*100) : 0}%</span><span class="sub">resolved or false positive</span></div><div class="kpi"><span class="lbl">Critical alerts</span><span class="val" style="color:var(--crit)">${al.filter(a => a.sev === 'critical').length}</span></div><div class="kpi"><span class="lbl">Control coverage</span><span class="val">${ctl.filter(c => c.covered).length}/${ctl.length}</span></div></div>
+      <div class="grid g-2e"><div><h2 style="margin-bottom:10px">Alerts per day by severity</h2><div class="chart-box"><canvas id="cStack"></canvas></div></div><div><h2 style="margin-bottom:10px">Most frequent rules</h2><div class="chart-box"><canvas id="cRules"></canvas></div></div></div></div>`;
+    const C = chartColors();
+    mkChart('cStack', {type:'bar', data:{labels:days.map(fmtDay), datasets:['critical','high','medium','low'].map((s, i) => ({label:SEV_LABEL[s], data:days.map(d => al.filter(a => a.sev === s && a.ts >= d && a.ts < d + DAY).length), backgroundColor:[C.crit, C.high, C.med, C.low][i], borderRadius:3}))},
+      options:{scales:{x:{stacked:true, grid:{display:false}}, y:{stacked:true, beginAtZero:true, grid:{color:C.line}}}}});
+    mkChart('cRules', {type:'bar', data:{labels:topR.map(x => x[0]), datasets:[{data:topR.map(x => x[1]), backgroundColor:C.brand, borderRadius:5}]}, options:{indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{grid:{color:C.line}}, y:{grid:{display:false}}}}});
+  } else if (tab === 'compliance'){
+    body.innerHTML = `<div class="panel-b"><div class="callout">Indicative mapping of CloudGate policies to ISO/IEC 27001:2022 Annex A controls. It shows where the prototype produces supporting evidence; it does not certify compliance with any standard.</div></div>
+      <div class="list">${ctl.map(c => `<div class="ctl-cov"><span class="mono">${c.id}</span><div><b style="font-weight:500">${esc(c.name)}</b><div class="faint small">${c.rules.map(r => r === '*log' ? 'Central event log' : r === '*workflow' ? 'Alert triage workflow' : `${r}${enabledIds.has(r) ? '' : ' (off)'}`).join(', ')}${c.cnt ? `, ${c.cnt} alerts as evidence` : ''}</div></div>${c.covered ? '<span class="tag ok">Covered</span>' : '<span class="tag bad">Gap</span>'}</div>`).join('')}</div>`;
+  } else {
+    body.innerHTML = P.audit.length ? `<div class="tbl-wrap"><table><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Detail</th></tr></thead><tbody>${P.audit.slice(0, 120).map(x => `<tr><td class="nowrap small">${fmtFull(x.ts)}</td><td class="small">${esc(x.actor)}</td><td>${esc(x.action)}</td><td class="small muted">${esc(x.detail)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty"><b>No changes recorded yet</b>Tune a policy, triage an alert or import a log and it will appear here.</div>';
+  }
+  $$('[data-tab]').forEach(b => b.onclick = () => { S.tab.reports = b.dataset.tab; vReports(); });
+  $('#expAll').onclick = () => exportFile(`cloudgate-alerts-${isoDate(Date.now())}.csv`, alertsCsv(al));
+  $('#expRep').onclick = () => exportFile(`cloudgate-weekly-report-${isoDate(Date.now())}.html`, reportHtml(ctl));
+}
+function reportHtml(ctl){
+  const al = S.alerts; const k = kpis(); const row = a => `<tr><td>${fmtFull(a.ts)}</td><td>${SEV_LABEL[a.sev]}</td><td>${esc(a.ruleId)} ${esc(a.ruleName)}</td><td>${esc(S.userById[a.user].name)}</td><td>${esc(a.summary)}</td><td>${statusLbl[a.status][0]}</td></tr>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><title>CloudGate weekly report</title><style>body{font:14px/1.5 Arial,sans-serif;max-width:960px;margin:32px auto;padding:0 20px;color:#17203B}h1{margin:0}table{width:100%;border-collapse:collapse;margin:12px 0 24px}td,th{border-bottom:1px solid #DCE1EA;padding:6px 8px;text-align:left;font-size:13px}.k{display:flex;gap:28px;margin:18px 0}.k b{display:block;font-size:24px}</style></head><body>
+  <h1>CloudGate weekly security report</h1><p>Meridian Tech (fictional demo data). Generated ${fmtFull(Date.now())}.</p>
+  <div class="k"><div><b>${fmtN(S.events.length)}</b>events analysed</div><div><b>${al.length}</b>alerts raised</div><div><b>${k.active}</b>still open</div><div><b>${k.risky}</b>high-risk users</div><div><b>${k.exposed}</b>over-shared files</div></div>
+  <h2>Critical and high alerts</h2><table><tr><th>Time</th><th>Severity</th><th>Rule</th><th>User</th><th>Summary</th><th>Status</th></tr>${al.filter(a => SEV_ORDER[a.sev] >= 3).map(row).join('')}</table>
+  <h2>Control coverage (indicative, ISO/IEC 27001:2022 Annex A)</h2><table><tr><th>Control</th><th>Name</th><th>Status</th></tr>${ctl.map(c => `<tr><td>${c.id}</td><td>${esc(c.name)}</td><td>${c.covered ? 'Covered' : 'Gap'}</td></tr>`).join('')}</table>
+  <p style="color:#56607E">Rule-based detections from a prototype running on simulated data. This report supports review and does not certify compliance.</p></body></html>`;
+}
+
+/* ============================================================
+   Live simulation
+   ============================================================ */
+function liveEvent(o){ const e = mkEvent(Object.assign({ts:Date.now(), network:'corporate', ip:'10.2' + Math.floor(Math.random()*9) + '.' + Math.floor(Math.random()*255) + '.' + (1 + Math.floor(Math.random()*250))}, o)); e.src = 'live'; e.id = 'LV-' + String(++S.liveCount).padStart(5, '0'); return e; }
+function scheduleScenario(){
+  const r = Math.random(); const u = USERS[Math.floor(Math.random()*USERS.length)]; const q = S.queue;
+  const pickDoc = l => { const d = DOCS.filter(x => !l || x[1] === l); const x = d[Math.floor(Math.random()*d.length)]; return {name:x[0], label:x[1]}; };
+  if (r < .14){ for (let i = 0; i < 6; i++) q.push({user:u.id, app:u.apps[0], action:'login_failed', city:'Frankfurt', network:'anonymizer', ip:'185.220.102.' + (10 + i)}); }
+  else if (r < .28) q.push({user:u.id, app:u.apps[0], action:'download', sizeMB:600 + Math.random()*2400, file:pickDoc('Confidential'), network:'home', device:{type:'Laptop', managed:false, os:'Windows 11'}});
+  else if (r < .4) q.push({user:u.id, app:u.apps[0], action:'share_public', file:pickDoc(Math.random() < .5 ? 'Restricted' : 'Confidential')});
+  else if (r < .54) q.push({user:u.id, app:['dropzap','pastevault','quickpdf'][Math.floor(Math.random()*3)], action:'upload', sizeMB:5 + Math.random()*300, file:pickDoc('Internal'), network:'home'});
+  else if (r < .64) q.push({user:u.id, app:u.apps[0], action:'login', city:['Dubai','Toronto','Sydney','New York'][Math.floor(Math.random()*4)], network:'home'});
+  else if (r < .74) q.push({user:u.id, app:u.apps[0], action:'share_external', target:u.name.split(' ')[0].toLowerCase() + '.personal@gmail.com', file:pickDoc('Confidential')});
+  else if (r < .84) q.push({user:u.id, app:'gws', action:'oauth_grant', target:'QuickPDF Online', scopes:['files.readwrite.all','mail.read']});
+  else if (r < .92) q.push({user:u.id, app:u.apps[0], action:'view', file:pickDoc('Restricted'), device:{type:'Mobile', managed:false, os:'Android 15'}, network:'home'});
+  else for (let i = 0; i < 22; i++) q.push({user:u.id, app:u.apps[0], action:'delete', file:{name:`archive_${i}.pdf`, label:'Internal'}});
+}
+function benignEvent(){
+  const u = USERS[Math.floor(Math.random()*USERS.length)]; const app = u.apps[Math.floor(Math.random()*u.apps.length)]; const r = Math.random();
+  const d = DOCS[Math.floor(Math.random()*DOCS.length)]; const file = {name:d[0], label:d[1]};
+  const action = r < .2 ? 'login' : r < .5 ? 'view' : r < .68 ? 'download' : r < .85 ? 'upload' : r < .95 ? 'share_internal' : 'delete';
+  return {user:u.id, app, action, file:action === 'login' ? null : file, sizeMB:action === 'download' || action === 'upload' ? .2 + Math.random()*45 : null, target:action === 'share_internal' ? USERS[Math.floor(Math.random()*USERS.length)].email : null, network:Math.random() < .6 ? 'corporate' : 'home'};
+}
+function liveTick(){
+  if (!S.queue.length && Math.random() < .16) scheduleScenario();
+  const o = S.queue.length ? S.queue.shift() : benignEvent();
+  if (o.file === undefined) o.file = null;
+  const e = liveEvent(o); const alerts = ingestLive(e);
+  animateThroughGate(e, alerts.length > 0);
+  alerts.forEach(a => { S.unseen.push(a.id); if (SEV_ORDER[a.sev] >= 3) toast(a.ruleName, a.summary, a.sev); });
+  updateBell(); if (alerts.length) renderNav();
+  if (S.view === 'overview') updateOverviewLive(); else { S.newSince++; const p = $('#newPill'); p.textContent = `${S.newSince} new events, refresh view`; p.classList.add('show'); }
+  S.liveTimer = setTimeout(liveTick, (900 + Math.random()*900) / S.speed);
+}
+function setLive(on){
+  S.live = on; clearTimeout(S.liveTimer); $('#liveBox').classList.toggle('on', on); $('#liveBtn').textContent = on ? 'Pause' : 'Start'; $('#liveLabel').textContent = on ? 'Live feed on' : 'Live feed off';
+  if (on){ audit('Live simulation started', `${S.speed}× speed`); S.liveTimer = setTimeout(liveTick, 300); }
+  if (S.view === 'overview'){ const h = $('#gateHint'); if (h) h.textContent = on ? 'Live feed is running. Flagged requests stop at the gate.' : 'Start the live feed to watch simulated requests get inspected in real time.'; const f = $('#gateCta'); if (f) f.innerHTML = on ? '' : `<button class="btn sm primary" id="gateStart">${icon('play', 14)}Start live feed</button>`; const gs = $('#gateStart'); if (gs) gs.onclick = () => setLive(true); }
+}
+$('#liveBtn').onclick = () => setLive(!S.live);
+$('#speed').onchange = e => { S.speed = +e.target.value; };
+
+/* ============================================================
+   Boot
+   ============================================================ */
+S.events = genHistory();
+P.imported.forEach(e => S.events.push(e));
+runAll();
+const hash = (location.hash || '').replace('#', '');
+S.view = VIEWS.find(v => v.id === hash) ? hash : 'overview';
+renderNav(); render();
+/* One orchestrated moment: replay a handful of recent events through the gate on load */
+if (S.view === 'overview' && !matchMedia('(prefers-reduced-motion: reduce)').matches){
+  const flaggedIds = new Set(S.alerts.map(a => a.eventId));
+  const sample = S.events.slice(-60).filter((e, i) => i % 5 === 0).slice(-8);
+  const crit = S.events.filter(e => flaggedIds.has(e.id)).slice(-3);
+  [...sample.slice(0, 3), crit[0], ...sample.slice(3, 6), crit[1], ...sample.slice(6), crit[2]].filter(Boolean).forEach((e, i) => setTimeout(() => animateThroughGate(e, flaggedIds.has(e.id)), 400 + i*260));
+}
+let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => Object.values(S.charts).forEach(c => c.resize()), 150); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (!P.theme) render(); });
+</script>
+</body>
+</html>
